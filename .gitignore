@@ -1,0 +1,6 @@
+/vendor
+/var
+phpstan.neon
+phpunit.xml
+.vscode
+.env
