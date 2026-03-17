@@ -70,11 +70,13 @@ class ImapConnection
     }
 
     /**
-     * @return list<array{uid: int, from: string, to: string, subject: string, date: string, seen: bool}>
+     * @param list<string>|null $fields
+     *
+     * @return list<array<string, mixed>>
      *
      * @throws MailboxNotFoundException
      */
-    public function listMessages(string $mailbox, int $limit = 20, int $offset = 0): array
+    public function listMessages(string $mailbox, int $limit = 20, int $offset = 0, array|null $fields = null): array
     {
         $folder = $this->getFolder($mailbox);
         $page = $offset > 0 ? (int) floor($offset / $limit) + 1 : 1;
@@ -92,14 +94,16 @@ class ImapConnection
 
         /** @var Message $message */
         foreach ($messages as $message) {
-            $result[] = $this->formatMessageSummary($message);
+            $result[] = $this->formatMessageSummary($message, $fields);
         }
 
         return $result;
     }
 
     /**
-     * @return list<array{uid: int, from: string, to: string, subject: string, date: string, seen: bool}>
+     * @param list<string>|null $fields
+     *
+     * @return list<array<string, mixed>>
      *
      * @throws MailboxNotFoundException
      */
@@ -115,6 +119,7 @@ class ImapConnection
         bool|null $flagged = null,
         int $limit = 20,
         int $offset = 0,
+        array|null $fields = null,
     ): array {
         $folder = $this->getFolder($mailbox);
 
@@ -164,7 +169,7 @@ class ImapConnection
 
         /** @var Message $message */
         foreach ($messages as $message) {
-            $result[] = $this->formatMessageSummary($message);
+            $result[] = $this->formatMessageSummary($message, $fields);
         }
 
         return $result;
@@ -423,10 +428,14 @@ class ImapConnection
         }
     }
 
-    /** @return array{uid: int, from: string, to: string, subject: string, date: string, seen: bool} */
-    private function formatMessageSummary(Message $message): array
+    /**
+     * @param list<string>|null $fields
+     *
+     * @return array<string, mixed>
+     */
+    private function formatMessageSummary(Message $message, array|null $fields = null): array
     {
-        return [
+        $all = [
             'uid' => $message->uid,
             'from' => $this->attributeToString($message->from),
             'to' => $this->attributeToString($message->to),
@@ -434,6 +443,20 @@ class ImapConnection
             'date' => $this->formatDate($message),
             'seen' => $message->hasFlag('Seen'),
         ];
+
+        if ($fields === null) {
+            return $all;
+        }
+
+        $filtered = ['uid' => $all['uid']];
+
+        foreach ($fields as $field) {
+            if ($field !== 'uid' && array_key_exists($field, $all)) {
+                $filtered[$field] = $all[$field];
+            }
+        }
+
+        return $filtered;
     }
 
     private function attributeToString(mixed $attribute): string

@@ -18,7 +18,11 @@ class MessageTool
 		private readonly ImapConnectionFactory $factory,
 	) {}
 
-	/** @return array{messages: list<array{uid: int, from: string, to: string, subject: string, date: string, seen: bool}>}|array{error: true, message: string} */
+	/**
+	 * @param list<string>|null $fields
+	 *
+	 * @return array{messages: list<array<string, mixed>>}|array{error: true, message: string}
+	 */
 	#[McpTool(name: 'list_messages', description: 'List messages in a mailbox with pagination', annotations: new ToolAnnotations(readOnlyHint: true))]
 	public function listMessages(
 		string $mailbox = 'INBOX',
@@ -26,13 +30,15 @@ class MessageTool
 		int $limit = 20,
 		#[Schema(description: 'Number of messages to skip')]
 		int $offset = 0,
+		#[Schema(description: 'Fields to return (uid is always included). Available: from, to, subject, date, seen. Omit for all fields.')]
+		array|null $fields = null,
 	): array {
 		$connection = null;
 
 		try {
 			$connection = $this->factory->create();
 
-			return ['messages' => $connection->listMessages($mailbox, $limit, $offset)];
+			return ['messages' => $connection->listMessages($mailbox, $limit, $offset, $fields)];
 		} catch (MailboxNotFoundException $e) {
 			return ['error' => true, 'message' => $e->getMessage()];
 		} catch (ImapConnectionException $e) {
@@ -42,7 +48,11 @@ class MessageTool
 		}
 	}
 
-	/** @return array{messages: list<array{uid: int, from: string, to: string, subject: string, date: string, seen: bool}>}|array{error: true, message: string} */
+	/**
+	 * @param list<string>|null $fields
+	 *
+	 * @return array{messages: list<array<string, mixed>>}|array{error: true, message: string}
+	 */
 	#[McpTool(name: 'search_messages', description: 'Search messages by criteria (from, to, subject, date range, body, flags)', annotations: new ToolAnnotations(readOnlyHint: true))]
 	public function searchMessages(
 		string $mailbox = 'INBOX',
@@ -64,6 +74,8 @@ class MessageTool
 		bool|null $flagged = null,
 		int $limit = 20,
 		int $offset = 0,
+		#[Schema(description: 'Fields to return (uid is always included). Available: from, to, subject, date, seen. Omit for all fields.')]
+		array|null $fields = null,
 	): array {
 		$connection = null;
 
@@ -82,6 +94,7 @@ class MessageTool
 				flagged: $flagged,
 				limit: $limit,
 				offset: $offset,
+				fields: $fields,
 			)];
 		} catch (MailboxNotFoundException $e) {
 			return ['error' => true, 'message' => $e->getMessage()];

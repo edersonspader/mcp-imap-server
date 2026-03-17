@@ -51,7 +51,7 @@ final class MessageToolTest extends TestCase
 	{
 		$this->connection->expects(self::once())
 			->method('listMessages')
-			->with('Sent', 10, 5)
+			->with('Sent', 10, 5, null)
 			->willReturn([]);
 
 		$result = $this->tool->listMessages('Sent', 10, 5);
@@ -160,5 +160,46 @@ final class MessageToolTest extends TestCase
 
 		self::assertTrue($result['error']);
 		self::assertStringContainsString('Connection failed', $result['message']);
+	}
+
+	#[Test]
+	public function it_lists_messages_with_selected_fields(): void
+	{
+		$expected = [
+			['uid' => 1, 'subject' => 'Hi'],
+			['uid' => 2, 'subject' => 'Bye'],
+		];
+
+		$this->connection->expects(self::once())
+			->method('listMessages')
+			->with('INBOX', 20, 0, ['uid', 'subject'])
+			->willReturn($expected);
+
+		$result = $this->tool->listMessages(fields: ['uid', 'subject']);
+
+		self::assertSame(['messages' => $expected], $result);
+	}
+
+	#[Test]
+	public function it_searches_messages_with_selected_fields(): void
+	{
+		$expected = [
+			['uid' => 5, 'from' => 'boss@co.com'],
+		];
+
+		$this->connection->expects(self::once())
+			->method('searchMessages')
+			->with(
+				'INBOX',
+				'boss@co.com',
+				null, null, null, null, null, null, null,
+				20, 0,
+				['uid', 'from'],
+			)
+			->willReturn($expected);
+
+		$result = $this->tool->searchMessages(from: 'boss@co.com', fields: ['uid', 'from']);
+
+		self::assertSame(['messages' => $expected], $result);
 	}
 }
