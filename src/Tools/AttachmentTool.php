@@ -18,7 +18,7 @@ class AttachmentTool
 		private readonly ImapConnectionFactory $factory,
 	) {}
 
-	/** @return list<array{filename: string, size: int, mime_type: string, saved_path: string}>|array{error: true, message: string} */
+	/** @return array{attachments: list<array{filename: string, size: int, mime_type: string, saved_path: string}>}|array{error: true, message: string} */
 	#[McpTool(name: 'get_attachments', description: 'Save message attachments to disk and return file metadata', annotations: new ToolAnnotations(readOnlyHint: false, destructiveHint: false))]
 	public function getAttachments(
 		#[Schema(description: 'Message UID')]
@@ -32,7 +32,7 @@ class AttachmentTool
 		try {
 			$connection = $this->factory->create();
 
-			return $connection->fetchAttachments($uid, $mailbox, $save_path);
+			return ['attachments' => $connection->fetchAttachments($uid, $mailbox, $save_path)];
 		} catch (MailboxNotFoundException | MessageNotFoundException $e) {
 			return ['error' => true, 'message' => $e->getMessage()];
 		} catch (ImapConnectionException $e) {

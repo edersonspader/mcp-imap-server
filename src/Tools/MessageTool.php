@@ -18,7 +18,7 @@ class MessageTool
 		private readonly ImapConnectionFactory $factory,
 	) {}
 
-	/** @return list<array{uid: int, from: string, to: string, subject: string, date: string, seen: bool}>|array{error: true, message: string} */
+	/** @return array{messages: list<array{uid: int, from: string, to: string, subject: string, date: string, seen: bool}>}|array{error: true, message: string} */
 	#[McpTool(name: 'list_messages', description: 'List messages in a mailbox with pagination', annotations: new ToolAnnotations(readOnlyHint: true))]
 	public function listMessages(
 		string $mailbox = 'INBOX',
@@ -32,7 +32,7 @@ class MessageTool
 		try {
 			$connection = $this->factory->create();
 
-			return $connection->listMessages($mailbox, $limit, $offset);
+			return ['messages' => $connection->listMessages($mailbox, $limit, $offset)];
 		} catch (MailboxNotFoundException $e) {
 			return ['error' => true, 'message' => $e->getMessage()];
 		} catch (ImapConnectionException $e) {
@@ -42,7 +42,7 @@ class MessageTool
 		}
 	}
 
-	/** @return list<array{uid: int, from: string, to: string, subject: string, date: string, seen: bool}>|array{error: true, message: string} */
+	/** @return array{messages: list<array{uid: int, from: string, to: string, subject: string, date: string, seen: bool}>}|array{error: true, message: string} */
 	#[McpTool(name: 'search_messages', description: 'Search messages by criteria (from, to, subject, date range, body, flags)', annotations: new ToolAnnotations(readOnlyHint: true))]
 	public function searchMessages(
 		string $mailbox = 'INBOX',
@@ -70,7 +70,7 @@ class MessageTool
 		try {
 			$connection = $this->factory->create();
 
-			return $connection->searchMessages(
+			return ['messages' => $connection->searchMessages(
 				mailbox: $mailbox,
 				from: $from,
 				to: $to,
@@ -82,7 +82,7 @@ class MessageTool
 				flagged: $flagged,
 				limit: $limit,
 				offset: $offset,
-			);
+			)];
 		} catch (MailboxNotFoundException $e) {
 			return ['error' => true, 'message' => $e->getMessage()];
 		} catch (ImapConnectionException $e) {

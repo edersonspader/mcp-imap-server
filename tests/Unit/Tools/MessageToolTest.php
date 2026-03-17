@@ -43,7 +43,7 @@ final class MessageToolTest extends TestCase
 
 		$result = $this->tool->listMessages();
 
-		self::assertSame($expected, $result);
+		self::assertSame(['messages' => $expected], $result);
 	}
 
 	#[Test]
@@ -56,7 +56,7 @@ final class MessageToolTest extends TestCase
 
 		$result = $this->tool->listMessages('Sent', 10, 5);
 
-		self::assertSame([], $result);
+		self::assertSame(['messages' => []], $result);
 	}
 
 	#[Test]
@@ -71,7 +71,7 @@ final class MessageToolTest extends TestCase
 
 		$result = $this->tool->searchMessages(from: 'boss@co.com', unseen: true);
 
-		self::assertSame($expected, $result);
+		self::assertSame(['messages' => $expected], $result);
 	}
 
 	#[Test]

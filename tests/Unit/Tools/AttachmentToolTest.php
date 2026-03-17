@@ -42,7 +42,7 @@ final class AttachmentToolTest extends TestCase
 
 		$result = $this->tool->getAttachments(1);
 
-		self::assertSame($expected, $result);
+		self::assertSame(['attachments' => $expected], $result);
 	}
 
 	#[Test]
@@ -53,7 +53,7 @@ final class AttachmentToolTest extends TestCase
 
 		$result = $this->tool->getAttachments(2);
 
-		self::assertSame([], $result);
+		self::assertSame(['attachments' => []], $result);
 	}
 
 	#[Test]

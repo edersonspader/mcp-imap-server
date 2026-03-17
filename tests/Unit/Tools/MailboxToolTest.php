@@ -43,7 +43,7 @@ final class MailboxToolTest extends TestCase
 
 		$result = $this->tool->listMailboxes();
 
-		self::assertSame($expected, $result);
+		self::assertSame(['mailboxes' => $expected], $result);
 	}
 
 	#[Test]

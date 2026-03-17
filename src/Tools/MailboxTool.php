@@ -16,7 +16,7 @@ class MailboxTool
 		private readonly ImapConnectionFactory $factory,
 	) {}
 
-	/** @return list<array{name: string, path: string, children: int}>|array{error: true, message: string} */
+	/** @return array{mailboxes: list<array{name: string, path: string, children: int}>}|array{error: true, message: string} */
 	#[McpTool(name: 'list_mailboxes', description: 'List all mailboxes/folders on the IMAP server', annotations: new ToolAnnotations(readOnlyHint: true))]
 	public function listMailboxes(): array
 	{
@@ -25,7 +25,7 @@ class MailboxTool
 		try {
 			$connection = $this->factory->create();
 
-			return $connection->listMailboxes();
+			return ['mailboxes' => $connection->listMailboxes()];
 		} catch (ImapConnectionException $e) {
 			return ['error' => true, 'message' => 'Connection failed: ' . $e->getMessage()];
 		} finally {
