@@ -156,6 +156,46 @@ class MessageActionTool
 		}
 	}
 
+	/**
+	 * @param list<int> $uids
+	 *
+	 * @return array{success?: bool, error?: bool, message: string}
+	 */
+	#[McpTool(name: 'batch_delete_messages', description: 'Delete multiple messages permanently in a single IMAP command. This action is irreversible. Max 50 UIDs per call. REQUIRES USER CONFIRMATION.', annotations: new ToolAnnotations(destructiveHint: true, title: 'Batch Delete Messages (destructive)'))]
+	public function batchDeleteMessages(
+		#[Schema(description: 'List of message UIDs to delete')]
+		array $uids,
+		string $mailbox = 'INBOX',
+	): array {
+		if ($uids === []) {
+			return ['error' => true, 'message' => 'No UIDs provided'];
+		}
+
+		if (\count($uids) > 50) {
+			return ['error' => true, 'message' => 'Batch size exceeds limit of 50 UIDs. Split into smaller batches.'];
+		}
+
+		$connection = null;
+
+		try {
+			$connection = $this->factory->create();
+			$success = $connection->batchDeleteMessages($uids, $mailbox);
+			$count = \count($uids);
+
+			if (!$success) {
+				return ['error' => true, 'message' => "Failed to delete {$count} messages from '{$mailbox}'"];
+			}
+
+			return ['success' => true, 'message' => "{$count} messages deleted from '{$mailbox}'"];
+		} catch (MailboxNotFoundException $e) {
+			return ['error' => true, 'message' => $e->getMessage()];
+		} catch (ImapConnectionException $e) {
+			return ['error' => true, 'message' => 'Connection failed: ' . $e->getMessage()];
+		} finally {
+			$connection?->disconnect();
+		}
+	}
+
 	/** @return array{success?: bool, error?: bool, message: string} */
 	#[McpTool(name: 'flag_message', description: 'Set or clear a flag on a message (Seen, Flagged, Answered, Draft)', annotations: new ToolAnnotations(destructiveHint: false, idempotentHint: true))]
 	public function flagMessage(

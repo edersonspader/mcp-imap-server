@@ -328,4 +328,70 @@ final class MessageActionToolTest extends TestCase
 		self::assertTrue($result['error']);
 		self::assertStringContainsString('Ghost', $result['message']);
 	}
+
+	#[Test]
+	public function it_batch_deletes_messages(): void
+	{
+		$this->connection->expects(self::once())
+			->method('batchDeleteMessages')
+			->with([1, 2, 3], 'INBOX')
+			->willReturn(true);
+		$this->connection->expects(self::once())->method('disconnect');
+
+		$result = $this->tool->batchDeleteMessages([1, 2, 3]);
+
+		self::assertTrue($result['success']);
+		self::assertStringContainsString('3 messages deleted', $result['message']);
+	}
+
+	#[Test]
+	public function it_returns_error_on_batch_delete_failure(): void
+	{
+		$this->connection->expects(self::once())
+			->method('batchDeleteMessages')
+			->willReturn(false);
+		$this->connection->expects(self::once())->method('disconnect');
+
+		$result = $this->tool->batchDeleteMessages([1, 2]);
+
+		self::assertTrue($result['error']);
+		self::assertStringContainsString('Failed to delete', $result['message']);
+	}
+
+	#[Test]
+	public function it_returns_error_when_batch_delete_exceeds_limit(): void
+	{
+		$this->connection->expects(self::never())->method('batchDeleteMessages');
+
+		$uids = range(1, 51);
+		$result = $this->tool->batchDeleteMessages($uids);
+
+		self::assertTrue($result['error']);
+		self::assertStringContainsString('exceeds limit', $result['message']);
+	}
+
+	#[Test]
+	public function it_returns_error_when_batch_delete_is_empty(): void
+	{
+		$this->connection->expects(self::never())->method('batchDeleteMessages');
+
+		$result = $this->tool->batchDeleteMessages([]);
+
+		self::assertTrue($result['error']);
+		self::assertStringContainsString('No UIDs', $result['message']);
+	}
+
+	#[Test]
+	public function it_returns_error_on_batch_delete_mailbox_not_found(): void
+	{
+		$this->connection->expects(self::once())
+			->method('batchDeleteMessages')
+			->willThrowException(new MailboxNotFoundException("Mailbox 'Ghost' not found"));
+		$this->connection->expects(self::once())->method('disconnect');
+
+		$result = $this->tool->batchDeleteMessages([1], 'Ghost');
+
+		self::assertTrue($result['error']);
+		self::assertStringContainsString('Ghost', $result['message']);
+	}
 }

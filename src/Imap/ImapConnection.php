@@ -332,6 +332,31 @@ class ImapConnection
     }
 
     /**
+     * @param list<int> $uids
+     *
+     * @throws MailboxNotFoundException
+     */
+    public function batchDeleteMessages(array $uids, string $mailbox): bool
+    {
+        $this->getFolder($mailbox);
+        $this->client->openFolder($mailbox);
+
+        /** @var ImapProtocol $protocol */
+        $protocol = $this->client->getConnection();
+        $command = $protocol->buildUIDCommand('STORE', IMAP::ST_UID);
+        $uidSet = implode(',', $uids);
+        $flags = $protocol->escapeList(['\\Deleted']);
+
+        $response = $protocol->requestAndResponse($command, [$uidSet, '+FLAGS.SILENT', $flags], true);
+
+        if (!$response->boolean()) {
+            return false;
+        }
+
+        return $this->client->getConnection()->expunge()->boolean();
+    }
+
+    /**
      * @return list<array{filename: string, size: int, mime_type: string, saved_path: string}>
      *
      * @throws MailboxNotFoundException
