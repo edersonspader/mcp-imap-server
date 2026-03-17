@@ -62,6 +62,7 @@ class ImapConnection
     public function deleteMailbox(string $name): void
     {
         $folder = $this->getFolder($name);
+        $this->client->openFolder('INBOX');
         $folder->delete();
     }
 
@@ -236,6 +237,33 @@ class ImapConnection
     {
         $message = $this->fetchMessageByUid($uid, $fromMailbox);
         $message->move($toMailbox);
+    }
+
+    /**
+     * @param list<int> $uids
+     *
+     * @return array{moved: list<int>, failed: array<int, string>}
+     *
+     * @throws MailboxNotFoundException
+     */
+    public function batchMoveMessages(array $uids, string $fromMailbox, string $toMailbox): array
+    {
+        $folder = $this->getFolder($fromMailbox);
+
+        $moved = [];
+        $failed = [];
+
+        foreach ($uids as $uid) {
+            try {
+                $message = $folder->messages()->getMessageByUid($uid);
+                $message->move($toMailbox);
+                $moved[] = $uid;
+            } catch (\Throwable $e) {
+                $failed[$uid] = "Message UID {$uid} not found in '{$fromMailbox}'";
+            }
+        }
+
+        return ['moved' => $moved, 'failed' => $failed];
     }
 
     /**

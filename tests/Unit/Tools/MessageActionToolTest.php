@@ -152,4 +152,100 @@ final class MessageActionToolTest extends TestCase
 
 		self::assertTrue($result['error']);
 	}
+
+	#[Test]
+	public function it_batch_moves_messages(): void
+	{
+		$this->connection->expects(self::once())
+			->method('batchMoveMessages')
+			->with([1, 2, 3], 'INBOX', 'Archive')
+			->willReturn(['moved' => [1, 2, 3], 'failed' => []]);
+		$this->connection->expects(self::once())->method('disconnect');
+
+		$result = $this->tool->batchMoveMessages([1, 2, 3], 'INBOX', 'Archive');
+
+		self::assertTrue($result['success']);
+		self::assertSame([1, 2, 3], $result['moved']);
+		self::assertStringContainsString('All 3 messages moved', $result['message']);
+	}
+
+	#[Test]
+	public function it_batch_moves_with_partial_failure(): void
+	{
+		$this->connection->expects(self::once())
+			->method('batchMoveMessages')
+			->with([1, 2, 3], 'INBOX', 'Archive')
+			->willReturn(['moved' => [1, 3], 'failed' => [2 => "Message UID 2 not found in 'INBOX'"]]);
+		$this->connection->expects(self::once())->method('disconnect');
+
+		$result = $this->tool->batchMoveMessages([1, 2, 3], 'INBOX', 'Archive');
+
+		self::assertTrue($result['success']);
+		self::assertSame([1, 3], $result['moved']);
+		self::assertArrayHasKey(2, $result['failed']);
+		self::assertStringContainsString('2/3 messages moved', $result['message']);
+	}
+
+	#[Test]
+	public function it_returns_error_when_all_batch_messages_fail(): void
+	{
+		$this->connection->expects(self::once())
+			->method('batchMoveMessages')
+			->willReturn(['moved' => [], 'failed' => [1 => 'Not found', 2 => 'Not found']]);
+
+		$result = $this->tool->batchMoveMessages([1, 2], 'INBOX', 'Archive');
+
+		self::assertTrue($result['error']);
+		self::assertStringContainsString('All 2 messages failed', $result['message']);
+	}
+
+	#[Test]
+	public function it_returns_error_when_batch_exceeds_limit(): void
+	{
+		$this->connection->expects(self::never())->method('batchMoveMessages');
+		$this->connection->expects(self::never())->method('disconnect');
+
+		$uids = range(1, 51);
+		$result = $this->tool->batchMoveMessages($uids, 'INBOX', 'Archive');
+
+		self::assertTrue($result['error']);
+		self::assertStringContainsString('exceeds limit', $result['message']);
+	}
+
+	#[Test]
+	public function it_returns_error_when_batch_is_empty(): void
+	{
+		$this->connection->expects(self::never())->method('batchMoveMessages');
+		$this->connection->expects(self::never())->method('disconnect');
+
+		$result = $this->tool->batchMoveMessages([], 'INBOX', 'Archive');
+
+		self::assertTrue($result['error']);
+		self::assertStringContainsString('No UIDs', $result['message']);
+	}
+
+	#[Test]
+	public function it_returns_error_on_batch_mailbox_not_found(): void
+	{
+		$this->connection->expects(self::once())
+			->method('batchMoveMessages')
+			->willThrowException(new MailboxNotFoundException("Mailbox 'Ghost' not found"));
+		$this->connection->expects(self::once())->method('disconnect');
+
+		$result = $this->tool->batchMoveMessages([1, 2], 'Ghost', 'Archive');
+
+		self::assertTrue($result['error']);
+		self::assertStringContainsString('Ghost', $result['message']);
+	}
+
+	#[Test]
+	public function it_disconnects_after_batch_move(): void
+	{
+		$this->connection->expects(self::once())
+			->method('batchMoveMessages')
+			->willReturn(['moved' => [1], 'failed' => []]);
+		$this->connection->expects(self::once())->method('disconnect');
+
+		$this->tool->batchMoveMessages([1], 'INBOX', 'Archive');
+	}
 }
