@@ -8,8 +8,10 @@ use App\Exception\MailboxNotFoundException;
 use App\Exception\MessageNotFoundException;
 use Webklex\PHPIMAP\Attachment;
 use Webklex\PHPIMAP\Client;
+use Webklex\PHPIMAP\Connection\Protocols\ImapProtocol;
 use Webklex\PHPIMAP\Exceptions\GetMessagesFailedException;
 use Webklex\PHPIMAP\Folder;
+use Webklex\PHPIMAP\IMAP;
 use Webklex\PHPIMAP\Message;
 
 class ImapConnection
@@ -304,6 +306,29 @@ class ImapConnection
     {
         $message = $this->fetchMessageByUid($uid, $mailbox);
         $message->unsetFlag($flag);
+    }
+
+    /**
+     * @param list<int> $uids
+     *
+     * @throws MailboxNotFoundException
+     */
+    public function batchSetFlag(array $uids, string $flag, bool $set, string $mailbox): bool
+    {
+        $this->getFolder($mailbox);
+        $this->client->openFolder($mailbox);
+
+        /** @var ImapProtocol $protocol */
+        $protocol = $this->client->getConnection();
+        $command = $protocol->buildUIDCommand('STORE', IMAP::ST_UID);
+        $uidSet = implode(',', $uids);
+        $mode = $set ? '+' : '-';
+        $item = "{$mode}FLAGS.SILENT";
+        $flags = $protocol->escapeList(['\\' . $flag]);
+
+        $response = $protocol->requestAndResponse($command, [$uidSet, $item, $flags], true);
+
+        return $response->boolean();
     }
 
     /**

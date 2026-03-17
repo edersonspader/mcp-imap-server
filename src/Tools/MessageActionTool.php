@@ -189,4 +189,49 @@ class MessageActionTool
 			$connection?->disconnect();
 		}
 	}
+
+	/**
+	 * @param list<int> $uids
+	 *
+	 * @return array{success?: bool, error?: bool, message: string}
+	 */
+	#[McpTool(name: 'batch_flag_messages', description: 'Set or clear a flag on multiple messages in a single IMAP command. Max 50 UIDs per call.', annotations: new ToolAnnotations(destructiveHint: false, idempotentHint: true))]
+	public function batchFlagMessages(
+		#[Schema(description: 'List of message UIDs')]
+		array $uids,
+		#[Schema(description: 'Flag name', pattern: '^(Seen|Flagged|Answered|Draft)$')]
+		string $flag,
+		#[Schema(description: 'true to set, false to clear')]
+		bool $set = true,
+		string $mailbox = 'INBOX',
+	): array {
+		if ($uids === []) {
+			return ['error' => true, 'message' => 'No UIDs provided'];
+		}
+
+		if (\count($uids) > 50) {
+			return ['error' => true, 'message' => 'Batch size exceeds limit of 50 UIDs. Split into smaller batches.'];
+		}
+
+		$connection = null;
+
+		try {
+			$connection = $this->factory->create();
+			$success = $connection->batchSetFlag($uids, $flag, $set, $mailbox);
+			$action = $set ? 'set' : 'cleared';
+			$count = \count($uids);
+
+			if (!$success) {
+				return ['error' => true, 'message' => "Failed to {$action} flag '{$flag}' on {$count} messages"];
+			}
+
+			return ['success' => true, 'message' => "Flag '{$flag}' {$action} on {$count} messages in '{$mailbox}'"];
+		} catch (MailboxNotFoundException $e) {
+			return ['error' => true, 'message' => $e->getMessage()];
+		} catch (ImapConnectionException $e) {
+			return ['error' => true, 'message' => 'Connection failed: ' . $e->getMessage()];
+		} finally {
+			$connection?->disconnect();
+		}
+	}
 }

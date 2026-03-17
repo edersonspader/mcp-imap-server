@@ -247,4 +247,85 @@ final class MessageActionToolTest extends TestCase
 
 		$this->tool->batchMoveMessages([1], 'INBOX', 'Archive');
 	}
+
+	#[Test]
+	public function it_batch_sets_flag(): void
+	{
+		$this->connection->expects(self::once())
+			->method('batchSetFlag')
+			->with([1, 2, 3], 'Seen', true, 'INBOX')
+			->willReturn(true);
+		$this->connection->expects(self::once())->method('disconnect');
+
+		$result = $this->tool->batchFlagMessages([1, 2, 3], 'Seen');
+
+		self::assertTrue($result['success']);
+		self::assertStringContainsString("Flag 'Seen' set on 3 messages", $result['message']);
+	}
+
+	#[Test]
+	public function it_batch_clears_flag(): void
+	{
+		$this->connection->expects(self::once())
+			->method('batchSetFlag')
+			->with([4, 5], 'Flagged', false, 'Sent')
+			->willReturn(true);
+		$this->connection->expects(self::once())->method('disconnect');
+
+		$result = $this->tool->batchFlagMessages([4, 5], 'Flagged', false, 'Sent');
+
+		self::assertTrue($result['success']);
+		self::assertStringContainsString("Flag 'Flagged' cleared on 2 messages", $result['message']);
+	}
+
+	#[Test]
+	public function it_returns_error_on_batch_flag_failure(): void
+	{
+		$this->connection->expects(self::once())
+			->method('batchSetFlag')
+			->willReturn(false);
+		$this->connection->expects(self::once())->method('disconnect');
+
+		$result = $this->tool->batchFlagMessages([1, 2], 'Seen');
+
+		self::assertTrue($result['error']);
+		self::assertStringContainsString('Failed to set', $result['message']);
+	}
+
+	#[Test]
+	public function it_returns_error_when_batch_flag_exceeds_limit(): void
+	{
+		$this->connection->expects(self::never())->method('batchSetFlag');
+
+		$uids = range(1, 51);
+		$result = $this->tool->batchFlagMessages($uids, 'Seen');
+
+		self::assertTrue($result['error']);
+		self::assertStringContainsString('exceeds limit', $result['message']);
+	}
+
+	#[Test]
+	public function it_returns_error_when_batch_flag_is_empty(): void
+	{
+		$this->connection->expects(self::never())->method('batchSetFlag');
+
+		$result = $this->tool->batchFlagMessages([], 'Seen');
+
+		self::assertTrue($result['error']);
+		self::assertStringContainsString('No UIDs', $result['message']);
+	}
+
+	#[Test]
+	public function it_returns_error_on_batch_flag_mailbox_not_found(): void
+	{
+		$this->connection->expects(self::once())
+			->method('batchSetFlag')
+			->willThrowException(new MailboxNotFoundException("Mailbox 'Ghost' not found"));
+		$this->connection->expects(self::once())->method('disconnect');
+
+		$result = $this->tool->batchFlagMessages([1], 'Seen', true, 'Ghost');
+
+		self::assertTrue($result['error']);
+		self::assertStringContainsString('Ghost', $result['message']);
+	}
 }
