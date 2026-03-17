@@ -30,6 +30,7 @@ class ImapConnectionFactory
 					'username' => $this->config->user,
 					'password' => $this->config->password,
 					'protocol' => 'imap',
+					'rfc' => 'BODY',
 				],
 			],
 		]);
