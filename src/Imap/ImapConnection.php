@@ -8,6 +8,7 @@ use App\Exception\MailboxNotFoundException;
 use App\Exception\MessageNotFoundException;
 use Webklex\PHPIMAP\Attachment;
 use Webklex\PHPIMAP\Client;
+use Webklex\PHPIMAP\Exceptions\GetMessagesFailedException;
 use Webklex\PHPIMAP\Folder;
 use Webklex\PHPIMAP\Message;
 
@@ -73,11 +74,15 @@ class ImapConnection
     {
         $folder = $this->getFolder($mailbox);
         $page = $offset > 0 ? (int) floor($offset / $limit) + 1 : 1;
-        $messages = $folder->messages()
-            ->all()
-            ->setFetchBody(false)
-            ->limit($limit, $page)
-            ->get();
+        try {
+            $messages = $folder->messages()
+                ->all()
+                ->setFetchBody(false)
+                ->limit($limit, $page)
+                ->get();
+        } catch (GetMessagesFailedException) {
+            return [];
+        }
 
         $result = [];
 
@@ -144,7 +149,13 @@ class ImapConnection
         }
 
         $page = $offset > 0 ? (int) floor($offset / $limit) + 1 : 1;
-        $messages = $query->limit($limit, $page)->get();
+
+        try {
+            $messages = $query->limit($limit, $page)->get();
+        } catch (GetMessagesFailedException) {
+            return [];
+        }
+
         $result = [];
 
         /** @var Message $message */
