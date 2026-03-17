@@ -3,6 +3,8 @@
 
 declare(strict_types=1);
 
+ini_set('display_errors', 'stderr');
+
 require_once __DIR__ . '/vendor/autoload.php';
 
 use App\Imap\ImapConfig;
