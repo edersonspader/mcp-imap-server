@@ -122,4 +122,32 @@ final class MailboxToolTest extends TestCase
 
 		self::assertTrue($result['error']);
 	}
+
+	#[Test]
+	public function it_returns_error_on_create_mailbox_failure(): void
+	{
+		$this->connection->method('createMailbox')
+			->willThrowException(new \RuntimeException('Folder already exists'));
+		$this->connection->expects(self::once())->method('disconnect');
+
+		$result = $this->tool->createMailbox('INBOX');
+
+		self::assertTrue($result['error']);
+		self::assertStringContainsString('Failed to create mailbox', $result['message']);
+		self::assertStringContainsString('Folder already exists', $result['message']);
+	}
+
+	#[Test]
+	public function it_returns_error_on_delete_mailbox_failure(): void
+	{
+		$this->connection->method('deleteMailbox')
+			->willThrowException(new \RuntimeException('Permission denied'));
+		$this->connection->expects(self::once())->method('disconnect');
+
+		$result = $this->tool->deleteMailbox('Protected');
+
+		self::assertTrue($result['error']);
+		self::assertStringContainsString('Failed to delete mailbox', $result['message']);
+		self::assertStringContainsString('Permission denied', $result['message']);
+	}
 }

@@ -175,7 +175,7 @@ class ImapConnection
             default => $message->getTextBody() !== '' ? $message->getTextBody() : $message->getHTMLBody(),
         };
 
-        if (mb_strlen($body) > $maxLength) {
+        if ($maxLength > 0 && mb_strlen($body) > $maxLength) {
             $body = mb_substr($body, 0, $maxLength) . "\n\n[... truncated at {$maxLength} characters]";
         }
 

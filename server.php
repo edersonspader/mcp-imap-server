@@ -21,7 +21,7 @@ $dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->safeLoad();
 
 $logger = new Logger('imap-mcp');
-$logger->pushHandler(new StreamHandler('php://stderr', Level::Error));
+$logger->pushHandler(new StreamHandler('php://stderr', Level::Debug));
 
 $cache = new Psr16Cache(new FilesystemAdapter('mcp-discovery', 3600, __DIR__ . '/var/cache'));
 

@@ -65,6 +65,8 @@ class MailboxTool
 			return ['success' => true, 'message' => "Mailbox '{$name}' created"];
 		} catch (ImapConnectionException $e) {
 			return ['error' => true, 'message' => 'Connection failed: ' . $e->getMessage()];
+		} catch (\Throwable $e) {
+			return ['error' => true, 'message' => "Failed to create mailbox '{$name}': " . $e->getMessage()];
 		} finally {
 			$connection?->disconnect();
 		}
@@ -85,6 +87,8 @@ class MailboxTool
 			return ['error' => true, 'message' => $e->getMessage()];
 		} catch (ImapConnectionException $e) {
 			return ['error' => true, 'message' => 'Connection failed: ' . $e->getMessage()];
+		} catch (\Throwable $e) {
+			return ['error' => true, 'message' => "Failed to delete mailbox '{$name}': " . $e->getMessage()];
 		} finally {
 			$connection?->disconnect();
 		}
