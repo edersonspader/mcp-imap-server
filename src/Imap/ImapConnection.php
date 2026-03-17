@@ -56,6 +56,7 @@ class ImapConnection
 
     public function createMailbox(string $name): void
     {
+        $this->client->openFolder('INBOX');
         $this->client->createFolder($name);
     }
 
