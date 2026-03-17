@@ -175,15 +175,14 @@ final class MessageActionToolTest extends TestCase
 		$this->connection->expects(self::once())
 			->method('batchMoveMessages')
 			->with([1, 2, 3], 'INBOX', 'Archive')
-			->willReturn(['moved' => [1, 3], 'failed' => [2 => "Message UID 2 not found in 'INBOX'"]]);
+			->willReturn(['moved' => [], 'failed' => [1, 2, 3]]);
 		$this->connection->expects(self::once())->method('disconnect');
 
 		$result = $this->tool->batchMoveMessages([1, 2, 3], 'INBOX', 'Archive');
 
-		self::assertTrue($result['success']);
-		self::assertSame([1, 3], $result['moved']);
-		self::assertArrayHasKey(2, $result['failed']);
-		self::assertStringContainsString('2/3 messages moved', $result['message']);
+		self::assertTrue($result['error']);
+		self::assertSame([1, 2, 3], $result['failed']);
+		self::assertStringContainsString('All 3 messages failed', $result['message']);
 	}
 
 	#[Test]
@@ -191,7 +190,7 @@ final class MessageActionToolTest extends TestCase
 	{
 		$this->connection->expects(self::once())
 			->method('batchMoveMessages')
-			->willReturn(['moved' => [], 'failed' => [1 => 'Not found', 2 => 'Not found']]);
+			->willReturn(['moved' => [], 'failed' => [1, 2]]);
 
 		$result = $this->tool->batchMoveMessages([1, 2], 'INBOX', 'Archive');
 

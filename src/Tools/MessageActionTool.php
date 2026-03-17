@@ -47,7 +47,7 @@ class MessageActionTool
 	/**
 	 * @param list<int> $uids
 	 *
-	 * @return array{success?: bool, error?: bool, message: string, moved?: list<int>, failed?: array<int, string>}
+	 * @return array{success?: bool, error?: bool, message: string, moved?: list<int>, failed?: list<int>}
 	 */
 	#[McpTool(name: 'batch_move_messages', description: 'Move multiple messages from one mailbox to another in a single batch operation. Removes from source. Max 50 UIDs per call. REQUIRES USER CONFIRMATION.', annotations: new ToolAnnotations(destructiveHint: true))]
 	public function batchMoveMessages(

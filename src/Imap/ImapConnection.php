@@ -243,28 +243,23 @@ class ImapConnection
     /**
      * @param list<int> $uids
      *
-     * @return array{moved: list<int>, failed: array<int, string>}
+     * @return array{moved: list<int>, failed: list<int>}
      *
      * @throws MailboxNotFoundException
      */
     public function batchMoveMessages(array $uids, string $fromMailbox, string $toMailbox): array
     {
-        $folder = $this->getFolder($fromMailbox);
+        $this->getFolder($fromMailbox);
+        $this->client->openFolder($fromMailbox);
 
-        $moved = [];
-        $failed = [];
+        $stringUids = array_map(strval(...), $uids);
+        $response = $this->client->getConnection()->moveManyMessages($stringUids, $toMailbox);
 
-        foreach ($uids as $uid) {
-            try {
-                $message = $folder->messages()->getMessageByUid($uid);
-                $message->move($toMailbox);
-                $moved[] = $uid;
-            } catch (\Throwable $e) {
-                $failed[$uid] = "Message UID {$uid} not found in '{$fromMailbox}'";
-            }
+        if ($response->boolean()) {
+            return ['moved' => $uids, 'failed' => []];
         }
 
-        return ['moved' => $moved, 'failed' => $failed];
+        return ['moved' => [], 'failed' => $uids];
     }
 
     /**
