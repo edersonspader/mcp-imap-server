@@ -192,8 +192,15 @@ final class MessageToolTest extends TestCase
 			->with(
 				'INBOX',
 				'boss@co.com',
-				null, null, null, null, null, null, null,
-				20, 0,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				20,
+				0,
 				['uid', 'from'],
 			)
 			->willReturn($expected);

@@ -256,11 +256,12 @@ class ImapConnection
      */
     public function batchMoveMessages(array $uids, string $fromMailbox, string $toMailbox): array
     {
-        $this->getFolder($fromMailbox);
-        $this->client->openFolder($fromMailbox);
+        $sourceFolder = $this->getFolder($fromMailbox);
+        $destFolder = $this->getFolder($toMailbox);
+        $this->client->openFolder($sourceFolder->path);
 
         $stringUids = array_map(strval(...), $uids);
-        $response = $this->client->getConnection()->moveManyMessages($stringUids, $toMailbox);
+        $response = $this->client->getConnection()->moveManyMessages($stringUids, $destFolder->path);
 
         if ($response->boolean()) {
             return ['moved' => $uids, 'failed' => []];
@@ -320,8 +321,8 @@ class ImapConnection
      */
     public function batchSetFlag(array $uids, string $flag, bool $set, string $mailbox): bool
     {
-        $this->getFolder($mailbox);
-        $this->client->openFolder($mailbox);
+        $folder = $this->getFolder($mailbox);
+        $this->client->openFolder($folder->path);
 
         /** @var ImapProtocol $protocol */
         $protocol = $this->client->getConnection();
@@ -343,8 +344,8 @@ class ImapConnection
      */
     public function batchDeleteMessages(array $uids, string $mailbox): bool
     {
-        $this->getFolder($mailbox);
-        $this->client->openFolder($mailbox);
+        $folder = $this->getFolder($mailbox);
+        $this->client->openFolder($folder->path);
 
         /** @var ImapProtocol $protocol */
         $protocol = $this->client->getConnection();
