@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Imap;
 
+use App\Exception\ImapConnectionException;
 use App\Exception\MailboxNotFoundException;
 use App\Exception\MessageNotFoundException;
 use Webklex\PHPIMAP\Attachment;
@@ -47,7 +48,15 @@ class ImapConnection implements ImapConnectionInterface
     public function countMessages(string $mailbox): array
     {
         $folder = $this->getFolder($mailbox);
-        $status = $folder->status();
+
+        try {
+            $status = $folder->status();
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error counting messages in '{$mailbox}': {$e->getMessage()}",
+                previous: $e,
+            );
+        }
 
         return [
             'total' => $status['messages'] ?? 0,
@@ -58,15 +67,30 @@ class ImapConnection implements ImapConnectionInterface
 
     public function createMailbox(string $name): void
     {
-        $this->client->openFolder('INBOX');
-        $this->client->createFolder($name);
+        try {
+            $this->client->openFolder('INBOX');
+            $this->client->createFolder($name);
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error creating mailbox '{$name}': {$e->getMessage()}",
+                previous: $e,
+            );
+        }
     }
 
     public function deleteMailbox(string $name): void
     {
         $folder = $this->getFolder($name);
-        $this->client->openFolder('INBOX');
-        $folder->delete();
+
+        try {
+            $this->client->openFolder('INBOX');
+            $folder->delete();
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error deleting mailbox '{$name}': {$e->getMessage()}",
+                previous: $e,
+            );
+        }
     }
 
     /**
@@ -88,6 +112,11 @@ class ImapConnection implements ImapConnectionInterface
                 ->get();
         } catch (GetMessagesFailedException) {
             return [];
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error listing messages in '{$mailbox}': {$e->getMessage()}",
+                previous: $e,
+            );
         }
 
         $result = [];
@@ -163,6 +192,11 @@ class ImapConnection implements ImapConnectionInterface
             $messages = $query->limit($limit, $page)->get();
         } catch (GetMessagesFailedException) {
             return [];
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error searching messages in '{$mailbox}': {$e->getMessage()}",
+                previous: $e,
+            );
         }
 
         $result = [];
@@ -244,7 +278,15 @@ class ImapConnection implements ImapConnectionInterface
     public function moveMessage(int $uid, string $fromMailbox, string $toMailbox): void
     {
         $message = $this->fetchMessageByUid($uid, $fromMailbox);
-        $message->move($toMailbox);
+
+        try {
+            $message->move($toMailbox);
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error moving message UID {$uid}: {$e->getMessage()}",
+                previous: $e,
+            );
+        }
     }
 
     /**
@@ -258,10 +300,20 @@ class ImapConnection implements ImapConnectionInterface
     {
         $sourceFolder = $this->getFolder($fromMailbox);
         $destFolder = $this->getFolder($toMailbox);
-        $this->client->openFolder($sourceFolder->path);
 
-        $stringUids = array_map(strval(...), $uids);
-        $response = $this->client->getConnection()->moveManyMessages($stringUids, $destFolder->path);
+        try {
+            $this->client->openFolder($sourceFolder->path);
+
+            $stringUids = array_map(strval(...), $uids);
+            $response = $this->client->getConnection()->moveManyMessages($stringUids, $destFolder->path);
+        } catch (MailboxNotFoundException|ImapConnectionException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error during batch move: {$e->getMessage()}",
+                previous: $e,
+            );
+        }
 
         if ($response->boolean()) {
             return ['moved' => $uids, 'failed' => []];
@@ -277,7 +329,15 @@ class ImapConnection implements ImapConnectionInterface
     public function copyMessage(int $uid, string $fromMailbox, string $toMailbox): void
     {
         $message = $this->fetchMessageByUid($uid, $fromMailbox);
-        $message->copy($toMailbox);
+
+        try {
+            $message->copy($toMailbox);
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error copying message UID {$uid}: {$e->getMessage()}",
+                previous: $e,
+            );
+        }
     }
 
     /**
@@ -287,7 +347,15 @@ class ImapConnection implements ImapConnectionInterface
     public function deleteMessage(int $uid, string $mailbox = 'INBOX'): void
     {
         $message = $this->fetchMessageByUid($uid, $mailbox);
-        $message->delete(expunge: true);
+
+        try {
+            $message->delete(expunge: true);
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error deleting message UID {$uid}: {$e->getMessage()}",
+                previous: $e,
+            );
+        }
     }
 
     /**
@@ -299,7 +367,15 @@ class ImapConnection implements ImapConnectionInterface
     public function setFlag(int $uid, string $flag, string $mailbox = 'INBOX'): void
     {
         $message = $this->fetchMessageByUid($uid, $mailbox);
-        $message->setFlag($flag);
+
+        try {
+            $message->setFlag($flag);
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error setting flag '{$flag}' on message UID {$uid}: {$e->getMessage()}",
+                previous: $e,
+            );
+        }
     }
 
     /**
@@ -311,7 +387,15 @@ class ImapConnection implements ImapConnectionInterface
     public function clearFlag(int $uid, string $flag, string $mailbox = 'INBOX'): void
     {
         $message = $this->fetchMessageByUid($uid, $mailbox);
-        $message->unsetFlag($flag);
+
+        try {
+            $message->unsetFlag($flag);
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error clearing flag '{$flag}' on message UID {$uid}: {$e->getMessage()}",
+                previous: $e,
+            );
+        }
     }
 
     /**
@@ -322,17 +406,27 @@ class ImapConnection implements ImapConnectionInterface
     public function batchSetFlag(array $uids, string $flag, bool $set, string $mailbox): bool
     {
         $folder = $this->getFolder($mailbox);
-        $this->client->openFolder($folder->path);
 
-        /** @var ImapProtocol $protocol */
-        $protocol = $this->client->getConnection();
-        $command = $protocol->buildUIDCommand('STORE', IMAP::ST_UID);
-        $uidSet = implode(',', $uids);
-        $mode = $set ? '+' : '-';
-        $item = "{$mode}FLAGS.SILENT";
-        $flags = $protocol->escapeList(['\\' . $flag]);
+        try {
+            $this->client->openFolder($folder->path);
 
-        $response = $protocol->requestAndResponse($command, [$uidSet, $item, $flags], true);
+            /** @var ImapProtocol $protocol */
+            $protocol = $this->client->getConnection();
+            $command = $protocol->buildUIDCommand('STORE', IMAP::ST_UID);
+            $uidSet = implode(',', $uids);
+            $mode = $set ? '+' : '-';
+            $item = "{$mode}FLAGS.SILENT";
+            $flags = $protocol->escapeList(['\\' . $flag]);
+
+            $response = $protocol->requestAndResponse($command, [$uidSet, $item, $flags], true);
+        } catch (MailboxNotFoundException|ImapConnectionException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error during batch flag: {$e->getMessage()}",
+                previous: $e,
+            );
+        }
 
         return $response->boolean();
     }
@@ -345,21 +439,31 @@ class ImapConnection implements ImapConnectionInterface
     public function batchDeleteMessages(array $uids, string $mailbox): bool
     {
         $folder = $this->getFolder($mailbox);
-        $this->client->openFolder($folder->path);
 
-        /** @var ImapProtocol $protocol */
-        $protocol = $this->client->getConnection();
-        $command = $protocol->buildUIDCommand('STORE', IMAP::ST_UID);
-        $uidSet = implode(',', $uids);
-        $flags = $protocol->escapeList(['\\Deleted']);
+        try {
+            $this->client->openFolder($folder->path);
 
-        $response = $protocol->requestAndResponse($command, [$uidSet, '+FLAGS.SILENT', $flags], true);
+            /** @var ImapProtocol $protocol */
+            $protocol = $this->client->getConnection();
+            $command = $protocol->buildUIDCommand('STORE', IMAP::ST_UID);
+            $uidSet = implode(',', $uids);
+            $flags = $protocol->escapeList(['\\Deleted']);
 
-        if (!$response->boolean()) {
-            return false;
+            $response = $protocol->requestAndResponse($command, [$uidSet, '+FLAGS.SILENT', $flags], true);
+
+            if (!$response->boolean()) {
+                return false;
+            }
+
+            return $this->client->getConnection()->expunge()->boolean();
+        } catch (MailboxNotFoundException|ImapConnectionException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error during batch delete: {$e->getMessage()}",
+                previous: $e,
+            );
         }
-
-        return $this->client->getConnection()->expunge()->boolean();
     }
 
     /**
@@ -402,10 +506,20 @@ class ImapConnection implements ImapConnectionInterface
         return $result;
     }
 
-    /** @throws MailboxNotFoundException */
+    /**
+     * @throws MailboxNotFoundException
+     * @throws ImapConnectionException
+     */
     private function getFolder(string $mailbox): Folder
     {
-        $folder = $this->client->getFolderByPath($mailbox);
+        try {
+            $folder = $this->client->getFolderByPath($mailbox);
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error accessing mailbox '{$mailbox}': {$e->getMessage()}",
+                previous: $e,
+            );
+        }
 
         if ($folder === null) {
             throw new MailboxNotFoundException("Mailbox '{$mailbox}' not found");
