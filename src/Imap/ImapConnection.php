@@ -14,7 +14,7 @@ use Webklex\PHPIMAP\Folder;
 use Webklex\PHPIMAP\IMAP;
 use Webklex\PHPIMAP\Message;
 
-class ImapConnection
+class ImapConnection implements ImapConnectionInterface
 {
     public function __construct(
         private readonly Client $client,

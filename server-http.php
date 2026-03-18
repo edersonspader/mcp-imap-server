@@ -17,6 +17,7 @@ use Monolog\Level;
 use Monolog\Logger;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7Server\ServerRequestCreator;
+use Psr\SimpleCache\CacheInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Psr16Cache;
 
@@ -27,9 +28,11 @@ $logger = new Logger('imap-mcp-http');
 $logger->pushHandler(new StreamHandler('php://stderr', Level::Debug));
 
 $cache = new Psr16Cache(new FilesystemAdapter('mcp-discovery', 3600, __DIR__ . '/var/cache'));
+$imapCache = new Psr16Cache(new FilesystemAdapter('imap-data', 0, __DIR__ . '/var/cache'));
 
 $container = new Container();
-$container->set(ImapConnectionFactory::class, new ImapConnectionFactory(ImapConfig::fromEnv()));
+$container->set(ImapConnectionFactory::class, new ImapConnectionFactory(ImapConfig::fromEnv(), $imapCache));
+$container->set(CacheInterface::class, $imapCache);
 
 $server = Server::builder()
 	->setServerInfo('IMAP MCP Server', '1.0.0')

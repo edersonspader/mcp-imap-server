@@ -6,6 +6,7 @@ namespace App\Imap;
 
 use App\Exception\ImapAuthException;
 use App\Exception\ImapConnectionException;
+use Psr\SimpleCache\CacheInterface;
 use Webklex\PHPIMAP\Client;
 use Webklex\PHPIMAP\Config;
 use Webklex\PHPIMAP\Exceptions\AuthFailedException;
@@ -15,10 +16,11 @@ class ImapConnectionFactory
 {
 	public function __construct(
 		private readonly ImapConfig $config,
+		private readonly CacheInterface|null $cache = null,
 	) {}
 
 	/** @throws ImapConnectionException */
-	public function create(): ImapConnection
+	public function create(): ImapConnectionInterface
 	{
 		$config = Config::make([
 			'accounts' => [
@@ -51,6 +53,12 @@ class ImapConnectionFactory
 			);
 		}
 
-		return new ImapConnection($client);
+		$connection = new ImapConnection($client);
+
+		if ($this->cache !== null) {
+			return new CachedImapConnection($connection, $this->cache);
+		}
+
+		return $connection;
 	}
 }
