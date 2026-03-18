@@ -42,7 +42,7 @@ class CachedImapConnection implements ImapConnectionInterface
 	/** @return array{total: int, unseen: int, recent: int} */
 	public function countMessages(string $mailbox): array
 	{
-		$key = $this->mailboxKey('count', $mailbox);
+		$key = 'count.' . $this->mailboxHash($mailbox);
 
 		/** @var array{total: int, unseen: int, recent: int}|null $cached */
 		$cached = $this->cache->get($key);
@@ -79,7 +79,8 @@ class CachedImapConnection implements ImapConnectionInterface
 	{
 		$version = $this->getMailboxVersion($mailbox);
 		$fieldsHash = $fields !== null ? md5(implode(',', $fields)) : 'all';
-		$key = "list:{$version}:{$mailbox}:{$limit}:{$offset}:{$fieldsHash}";
+		$mbox = $this->mailboxHash($mailbox);
+		$key = "list.{$version}.{$mbox}.{$limit}.{$offset}.{$fieldsHash}";
 
 		/** @var list<array<string, mixed>>|null $cached */
 		$cached = $this->cache->get($key);
@@ -128,7 +129,7 @@ class CachedImapConnection implements ImapConnectionInterface
 			$offset,
 			$fields,
 		]));
-		$key = "search:{$version}:{$paramsHash}";
+		$key = "search.{$version}.{$paramsHash}";
 
 		/** @var list<array<string, mixed>>|null $cached */
 		$cached = $this->cache->get($key);
@@ -165,7 +166,8 @@ class CachedImapConnection implements ImapConnectionInterface
 		string $format = 'text',
 		int $maxLength = 4000,
 	): array {
-		$key = "msg:{$mailbox}:{$uid}:{$format}:{$maxLength}";
+		$mbox = $this->mailboxHash($mailbox);
+		$key = "msg.{$mbox}.{$uid}.{$format}.{$maxLength}";
 
 		/** @var array{uid: int, from: string, to: string, cc: string, subject: string, date: string, body: string, has_attachments: bool}|null $cached */
 		$cached = $this->cache->get($key);
@@ -185,7 +187,8 @@ class CachedImapConnection implements ImapConnectionInterface
 	 */
 	public function getMessageHeaders(int $uid, string $mailbox = 'INBOX'): array
 	{
-		$key = "hdr:{$mailbox}:{$uid}";
+		$mbox = $this->mailboxHash($mailbox);
+		$key = "hdr.{$mbox}.{$uid}";
 
 		/** @var array{uid: int, message_id: string, from: string, to: string, cc: string, reply_to: string, subject: string, date: string, in_reply_to: string, seen: bool, flagged: bool, answered: bool}|null $cached */
 		$cached = $this->cache->get($key);
@@ -231,8 +234,9 @@ class CachedImapConnection implements ImapConnectionInterface
 	{
 		$this->inner->deleteMessage($uid, $mailbox);
 		$this->invalidateMailbox($mailbox);
-		$this->cache->deleteMultiple(["msg:{$mailbox}:{$uid}:text:4000", "msg:{$mailbox}:{$uid}:html:4000", "msg:{$mailbox}:{$uid}:both:4000"]);
-		$this->cache->delete("hdr:{$mailbox}:{$uid}");
+		$mbox = $this->mailboxHash($mailbox);
+		$this->cache->deleteMultiple(["msg.{$mbox}.{$uid}.text.4000", "msg.{$mbox}.{$uid}.html.4000", "msg.{$mbox}.{$uid}.both.4000"]);
+		$this->cache->delete("hdr.{$mbox}.{$uid}");
 	}
 
 	/**
@@ -243,13 +247,14 @@ class CachedImapConnection implements ImapConnectionInterface
 		$result = $this->inner->batchDeleteMessages($uids, $mailbox);
 		$this->invalidateMailbox($mailbox);
 
+		$mbox = $this->mailboxHash($mailbox);
 		$keys = [];
 
 		foreach ($uids as $uid) {
-			$keys[] = "msg:{$mailbox}:{$uid}:text:4000";
-			$keys[] = "msg:{$mailbox}:{$uid}:html:4000";
-			$keys[] = "msg:{$mailbox}:{$uid}:both:4000";
-			$keys[] = "hdr:{$mailbox}:{$uid}";
+			$keys[] = "msg.{$mbox}.{$uid}.text.4000";
+			$keys[] = "msg.{$mbox}.{$uid}.html.4000";
+			$keys[] = "msg.{$mbox}.{$uid}.both.4000";
+			$keys[] = "hdr.{$mbox}.{$uid}";
 		}
 
 		$this->cache->deleteMultiple($keys);
@@ -260,14 +265,14 @@ class CachedImapConnection implements ImapConnectionInterface
 	public function setFlag(int $uid, string $flag, string $mailbox = 'INBOX'): void
 	{
 		$this->inner->setFlag($uid, $flag, $mailbox);
-		$this->cache->delete("hdr:{$mailbox}:{$uid}");
+		$this->cache->delete('hdr.' . $this->mailboxHash($mailbox) . '.' . $uid);
 		$this->invalidateMailbox($mailbox);
 	}
 
 	public function clearFlag(int $uid, string $flag, string $mailbox = 'INBOX'): void
 	{
 		$this->inner->clearFlag($uid, $flag, $mailbox);
-		$this->cache->delete("hdr:{$mailbox}:{$uid}");
+		$this->cache->delete('hdr.' . $this->mailboxHash($mailbox) . '.' . $uid);
 		$this->invalidateMailbox($mailbox);
 	}
 
@@ -278,10 +283,11 @@ class CachedImapConnection implements ImapConnectionInterface
 	{
 		$result = $this->inner->batchSetFlag($uids, $flag, $set, $mailbox);
 
+		$mbox = $this->mailboxHash($mailbox);
 		$keys = [];
 
 		foreach ($uids as $uid) {
-			$keys[] = "hdr:{$mailbox}:{$uid}";
+			$keys[] = "hdr.{$mbox}.{$uid}";
 		}
 
 		$this->cache->deleteMultiple($keys);
@@ -300,7 +306,7 @@ class CachedImapConnection implements ImapConnectionInterface
 
 	private function getMailboxVersion(string $mailbox): string
 	{
-		$versionKey = "ver:{$mailbox}";
+		$versionKey = 'ver.' . $this->mailboxHash($mailbox);
 
 		/** @var string|null $version */
 		$version = $this->cache->get($versionKey);
@@ -317,12 +323,13 @@ class CachedImapConnection implements ImapConnectionInterface
 
 	private function invalidateMailbox(string $mailbox): void
 	{
-		$this->cache->delete("ver:{$mailbox}");
-		$this->cache->delete($this->mailboxKey('count', $mailbox));
+		$mbox = $this->mailboxHash($mailbox);
+		$this->cache->delete('ver.' . $mbox);
+		$this->cache->delete('count.' . $mbox);
 	}
 
-	private function mailboxKey(string $prefix, string $mailbox): string
+	private function mailboxHash(string $mailbox): string
 	{
-		return "{$prefix}:{$mailbox}";
+		return md5($mailbox);
 	}
 }
