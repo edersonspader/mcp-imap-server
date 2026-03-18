@@ -306,7 +306,7 @@ class ImapConnection implements ImapConnectionInterface
 
             $stringUids = array_map(strval(...), $uids);
             $response = $this->client->getConnection()->moveManyMessages($stringUids, $destFolder->path);
-        } catch (MailboxNotFoundException|ImapConnectionException $e) {
+        } catch (MailboxNotFoundException | ImapConnectionException $e) {
             throw $e;
         } catch (\Exception $e) {
             throw new ImapConnectionException(
@@ -419,7 +419,7 @@ class ImapConnection implements ImapConnectionInterface
             $flags = $protocol->escapeList(['\\' . $flag]);
 
             $response = $protocol->requestAndResponse($command, [$uidSet, $item, $flags], true);
-        } catch (MailboxNotFoundException|ImapConnectionException $e) {
+        } catch (MailboxNotFoundException | ImapConnectionException $e) {
             throw $e;
         } catch (\Exception $e) {
             throw new ImapConnectionException(
@@ -456,7 +456,7 @@ class ImapConnection implements ImapConnectionInterface
             }
 
             return $this->client->getConnection()->expunge()->boolean();
-        } catch (MailboxNotFoundException|ImapConnectionException $e) {
+        } catch (MailboxNotFoundException | ImapConnectionException $e) {
             throw $e;
         } catch (\Exception $e) {
             throw new ImapConnectionException(
