@@ -130,6 +130,7 @@ class ImapConnection implements ImapConnectionInterface
     }
 
     /**
+     * @param list<string>|null $flags
      * @param list<string>|null $fields
      *
      * @return list<array<string, mixed>>
@@ -144,8 +145,7 @@ class ImapConnection implements ImapConnectionInterface
         string|null $since = null,
         string|null $before = null,
         string|null $body = null,
-        bool|null $unseen = null,
-        bool|null $flagged = null,
+        array|null $flags = null,
         int $limit = 20,
         int $offset = 0,
         array|null $fields = null,
@@ -178,12 +178,11 @@ class ImapConnection implements ImapConnectionInterface
             $query = $query->text($body);
         }
 
-        if ($unseen === true) {
-            $query = $query->unseen();
-        }
-
-        if ($flagged === true) {
-            $query = $query->flagged();
+        if ($flags !== null) {
+            foreach ($flags as $flag) {
+                $method = lcfirst($flag);
+                $query = $query->{$method}();
+            }
         }
 
         $page = $offset > 0 ? (int) floor($offset / $limit) + 1 : 1;

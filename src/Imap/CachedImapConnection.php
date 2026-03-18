@@ -96,6 +96,7 @@ class CachedImapConnection implements ImapConnectionInterface
 	}
 
 	/**
+	 * @param list<string>|null $flags
 	 * @param list<string>|null $fields
 	 *
 	 * @return list<array<string, mixed>>
@@ -108,8 +109,7 @@ class CachedImapConnection implements ImapConnectionInterface
 		string|null $since = null,
 		string|null $before = null,
 		string|null $body = null,
-		bool|null $unseen = null,
-		bool|null $flagged = null,
+		array|null $flags = null,
 		int $limit = 20,
 		int $offset = 0,
 		array|null $fields = null,
@@ -123,8 +123,7 @@ class CachedImapConnection implements ImapConnectionInterface
 			$since,
 			$before,
 			$body,
-			$unseen,
-			$flagged,
+			$flags,
 			$limit,
 			$offset,
 			$fields,
@@ -146,8 +145,7 @@ class CachedImapConnection implements ImapConnectionInterface
 			$since,
 			$before,
 			$body,
-			$unseen,
-			$flagged,
+			$flags,
 			$limit,
 			$offset,
 			$fields,

@@ -31,6 +31,7 @@ interface ImapConnectionInterface
 	public function listMessages(string $mailbox, int $limit = 20, int $offset = 0, array|null $fields = null): array;
 
 	/**
+	 * @param list<string>|null $flags
 	 * @param list<string>|null $fields
 	 *
 	 * @return list<array<string, mixed>>
@@ -45,8 +46,7 @@ interface ImapConnectionInterface
 		string|null $since = null,
 		string|null $before = null,
 		string|null $body = null,
-		bool|null $unseen = null,
-		bool|null $flagged = null,
+		array|null $flags = null,
 		int $limit = 20,
 		int $offset = 0,
 		array|null $fields = null,

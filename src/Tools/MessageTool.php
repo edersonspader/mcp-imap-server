@@ -49,6 +49,7 @@ class MessageTool
 	}
 
 	/**
+	 * @param list<string>|null $flags
 	 * @param list<string>|null $fields
 	 *
 	 * @return array{messages: list<array<string, mixed>>}|array{error: true, message: string}
@@ -68,10 +69,8 @@ class MessageTool
 		string|null $before = null,
 		#[Schema(description: 'Search in message body')]
 		string|null $body = null,
-		#[Schema(description: 'Filter only unseen messages')]
-		bool|null $unseen = null,
-		#[Schema(description: 'Filter only flagged messages')]
-		bool|null $flagged = null,
+		#[Schema(description: 'IMAP flags to filter by. Available: Seen, Unseen, Flagged, Unflagged, Answered, Unanswered, Deleted, Undeleted, Recent, Old, New')]
+		array|null $flags = null,
 		int $limit = 20,
 		int $offset = 0,
 		#[Schema(description: 'Fields to return (uid is always included). Available: from, to, subject, date, seen. Omit for all fields.')]
@@ -90,8 +89,7 @@ class MessageTool
 				since: $since,
 				before: $before,
 				body: $body,
-				unseen: $unseen,
-				flagged: $flagged,
+				flags: $flags,
 				limit: $limit,
 				offset: $offset,
 				fields: $fields,

@@ -69,7 +69,7 @@ final class MessageToolTest extends TestCase
 		$this->connection->method('searchMessages')->willReturn($expected);
 		$this->connection->expects(self::once())->method('disconnect');
 
-		$result = $this->tool->searchMessages(from: 'boss@co.com', unseen: true);
+		$result = $this->tool->searchMessages(from: 'boss@co.com', flags: ['Unseen']);
 
 		self::assertSame(['messages' => $expected], $result);
 	}
@@ -192,7 +192,6 @@ final class MessageToolTest extends TestCase
 			->with(
 				'INBOX',
 				'boss@co.com',
-				null,
 				null,
 				null,
 				null,
