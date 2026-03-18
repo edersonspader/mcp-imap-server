@@ -69,7 +69,7 @@ class MessageTool
 		string|null $before = null,
 		#[Schema(description: 'Search in message body')]
 		string|null $body = null,
-		#[Schema(description: 'IMAP flags to filter by. Available: Seen, Unseen, Flagged, Unflagged, Answered, Unanswered, Deleted, Undeleted, Recent, Old, New')]
+		#[Schema(description: 'IMAP flags to filter by. Available: SEEN, UNSEEN, FLAGGED, UNFLAGGED, ANSWERED, UNANSWERED, DELETED, UNDELETED, RECENT, OLD, NEW')]
 		array|null $flags = null,
 		int $limit = 20,
 		int $offset = 0,

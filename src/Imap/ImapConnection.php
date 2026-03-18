@@ -180,8 +180,7 @@ class ImapConnection implements ImapConnectionInterface
 
         if ($flags !== null) {
             foreach ($flags as $flag) {
-                $method = lcfirst($flag);
-                $query = $query->{$method}();
+                $query = $query->where(strtoupper($flag));
             }
         }
 
