@@ -13,18 +13,19 @@ use App\Smtp\SmtpConnectionFactory;
 use App\Tools\DraftTool;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(DraftTool::class)]
 final class DraftToolTest extends TestCase
 {
-	private ImapConnectionInterface&MockObject $imap;
+	private ImapConnectionInterface&Stub $imap;
+	private SmtpConfig $config;
 	private DraftTool $tool;
 
 	protected function setUp(): void
 	{
-		$config = new SmtpConfig(
+		$this->config = new SmtpConfig(
 			host: 'smtp.test.com',
 			port: 587,
 			user: 'user@test.com',
@@ -32,13 +33,13 @@ final class DraftToolTest extends TestCase
 			from: 'default@test.com',
 		);
 
-		$this->imap = $this->createMock(ImapConnectionInterface::class);
+		$this->imap = $this->createStub(ImapConnectionInterface::class);
 
 		$imapFactory = $this->createStub(ImapConnectionFactory::class);
 		$imapFactory->method('create')->willReturn($this->imap);
 
 		$smtpFactory = $this->createStub(SmtpConnectionFactory::class);
-		$smtpFactory->method('getConfig')->willReturn($config);
+		$smtpFactory->method('getConfig')->willReturn($this->config);
 
 		$this->tool = new DraftTool($imapFactory, $smtpFactory);
 	}
@@ -46,16 +47,19 @@ final class DraftToolTest extends TestCase
 	#[Test]
 	public function it_saves_draft(): void
 	{
-		$this->imap->expects(self::once())
+		$imap = $this->createMock(ImapConnectionInterface::class);
+		$imap->expects(self::once())
 			->method('appendMessage')
 			->with(
 				self::callback(static fn(mixed $msg): bool => \is_string($msg) && $msg !== ''),
 				'Drafts',
 				['\\Draft', '\\Seen'],
 			);
-		$this->imap->expects(self::once())->method('disconnect');
+		$imap->expects(self::once())->method('disconnect');
 
-		$result = $this->tool->saveDraft(
+		$tool = $this->buildTool($imap);
+
+		$result = $tool->saveDraft(
 			to: ['recipient@example.com'],
 			subject: 'Draft Subject',
 			body: 'Draft body',
@@ -68,9 +72,12 @@ final class DraftToolTest extends TestCase
 	#[Test]
 	public function it_saves_draft_with_all_fields(): void
 	{
-		$this->imap->expects(self::once())->method('appendMessage');
+		$imap = $this->createMock(ImapConnectionInterface::class);
+		$imap->expects(self::once())->method('appendMessage');
 
-		$result = $this->tool->saveDraft(
+		$tool = $this->buildTool($imap);
+
+		$result = $tool->saveDraft(
 			to: ['to@example.com'],
 			subject: 'Full draft',
 			body: 'Text body',
@@ -85,7 +92,8 @@ final class DraftToolTest extends TestCase
 	#[Test]
 	public function it_saves_draft_with_custom_folder(): void
 	{
-		$this->imap->expects(self::once())
+		$imap = $this->createMock(ImapConnectionInterface::class);
+		$imap->expects(self::once())
 			->method('appendMessage')
 			->with(
 				self::callback(static fn(mixed $msg): bool => \is_string($msg) && $msg !== ''),
@@ -93,7 +101,9 @@ final class DraftToolTest extends TestCase
 				['\\Draft', '\\Seen'],
 			);
 
-		$result = $this->tool->saveDraft(
+		$tool = $this->buildTool($imap);
+
+		$result = $tool->saveDraft(
 			subject: 'Test',
 			body: 'Body',
 			draft_folder: 'MyDrafts',
@@ -106,9 +116,12 @@ final class DraftToolTest extends TestCase
 	#[Test]
 	public function it_saves_minimal_draft(): void
 	{
-		$this->imap->expects(self::once())->method('appendMessage');
+		$imap = $this->createMock(ImapConnectionInterface::class);
+		$imap->expects(self::once())->method('appendMessage');
 
-		$result = $this->tool->saveDraft(subject: 'Just a subject', body: ' ');
+		$tool = $this->buildTool($imap);
+
+		$result = $tool->saveDraft(subject: 'Just a subject', body: ' ');
 
 		self::assertTrue($result['success'] ?? false);
 	}
@@ -132,27 +145,31 @@ final class DraftToolTest extends TestCase
 	#[Test]
 	public function it_returns_error_on_connection_failure(): void
 	{
-		$this->imap->expects(self::never())->method('disconnect');
+		$imap = $this->createMock(ImapConnectionInterface::class);
+		$imap->expects(self::never())->method('disconnect');
 
 		$imapFactory = $this->createStub(ImapConnectionFactory::class);
 		$imapFactory->method('create')
 			->willThrowException(new ImapConnectionException('Timeout'));
 
-		$config = new SmtpConfig(
-			host: 'smtp.test.com',
-			port: 587,
-			user: 'user@test.com',
-			password: 'secret',
-			from: 'default@test.com',
-		);
-
 		$smtpFactory = $this->createStub(SmtpConnectionFactory::class);
-		$smtpFactory->method('getConfig')->willReturn($config);
+		$smtpFactory->method('getConfig')->willReturn($this->config);
 
 		$tool = new DraftTool($imapFactory, $smtpFactory);
 		$result = $tool->saveDraft(subject: 'Test', body: 'Body');
 
 		self::assertTrue($result['error'] ?? false);
 		self::assertStringContainsString('Connection failed', $result['message']);
+	}
+
+	private function buildTool(ImapConnectionInterface|null $imap = null): DraftTool
+	{
+		$imapFactory = $this->createStub(ImapConnectionFactory::class);
+		$imapFactory->method('create')->willReturn($imap ?? $this->imap);
+
+		$smtpFactory = $this->createStub(SmtpConnectionFactory::class);
+		$smtpFactory->method('getConfig')->willReturn($this->config);
+
+		return new DraftTool($imapFactory, $smtpFactory);
 	}
 }

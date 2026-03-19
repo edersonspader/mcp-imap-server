@@ -17,18 +17,22 @@ use App\Tools\SendTool;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(SendTool::class)]
 final class SendToolTest extends TestCase
 {
-	private ImapConnectionInterface&MockObject $imap;
-	private SmtpConnectionInterface&MockObject $smtp;
+	private ImapConnectionInterface&Stub $imap;
+	private SmtpConnectionInterface&Stub $smtp;
+	private SmtpConfig $config;
+	private ImapConnectionFactory&Stub $imapFactory;
+	private SmtpConnectionFactory&Stub $smtpFactory;
 	private SendTool $tool;
 
 	protected function setUp(): void
 	{
-		$config = new SmtpConfig(
+		$this->config = new SmtpConfig(
 			host: 'smtp.test.com',
 			port: 587,
 			user: 'user@test.com',
@@ -36,27 +40,32 @@ final class SendToolTest extends TestCase
 			from: 'default@test.com',
 		);
 
-		$this->imap = $this->createMock(ImapConnectionInterface::class);
+		$this->imap = $this->createStub(ImapConnectionInterface::class);
 
-		$imapFactory = $this->createStub(ImapConnectionFactory::class);
-		$imapFactory->method('create')->willReturn($this->imap);
+		$this->imapFactory = $this->createStub(ImapConnectionFactory::class);
+		$this->imapFactory->method('create')->willReturn($this->imap);
 
-		$this->smtp = $this->createMock(SmtpConnectionInterface::class);
+		$this->smtp = $this->createStub(SmtpConnectionInterface::class);
 
-		$smtpFactory = $this->createStub(SmtpConnectionFactory::class);
-		$smtpFactory->method('getConfig')->willReturn($config);
-		$smtpFactory->method('create')->willReturn($this->smtp);
+		$this->smtpFactory = $this->createStub(SmtpConnectionFactory::class);
+		$this->smtpFactory->method('getConfig')->willReturn($this->config);
+		$this->smtpFactory->method('create')->willReturn($this->smtp);
 
-		$this->tool = new SendTool($smtpFactory, $imapFactory);
+		$this->tool = new SendTool($this->smtpFactory, $this->imapFactory);
 	}
 
 	#[Test]
 	public function it_sends_email(): void
 	{
-		$this->smtp->expects(self::once())->method('send');
-		$this->imap->expects(self::once())->method('appendMessage');
+		$smtp = $this->createMock(SmtpConnectionInterface::class);
+		$smtp->expects(self::once())->method('send');
 
-		$result = $this->tool->sendEmail(
+		$imap = $this->createMock(ImapConnectionInterface::class);
+		$imap->expects(self::once())->method('appendMessage');
+
+		$tool = $this->buildTool($imap, $smtp);
+
+		$result = $tool->sendEmail(
 			to: ['recipient@example.com'],
 			subject: 'Hello',
 			body: 'World',
@@ -69,10 +78,15 @@ final class SendToolTest extends TestCase
 	#[Test]
 	public function it_skips_saving_to_sent_when_empty(): void
 	{
-		$this->smtp->expects(self::once())->method('send');
-		$this->imap->expects(self::never())->method('appendMessage');
+		$smtp = $this->createMock(SmtpConnectionInterface::class);
+		$smtp->expects(self::once())->method('send');
 
-		$result = $this->tool->sendEmail(
+		$imap = $this->createMock(ImapConnectionInterface::class);
+		$imap->expects(self::never())->method('appendMessage');
+
+		$tool = $this->buildTool($imap, $smtp);
+
+		$result = $tool->sendEmail(
 			to: ['recipient@example.com'],
 			subject: 'Hello',
 			body: 'World',
@@ -114,8 +128,9 @@ final class SendToolTest extends TestCase
 	#[Test]
 	public function it_replies_to_email(): void
 	{
-		$this->imap->method('getMessageHeaders')->willReturn($this->makeHeaders());
-		$this->imap->method('readMessage')->willReturn([
+		$imap = $this->createMock(ImapConnectionInterface::class);
+		$imap->method('getMessageHeaders')->willReturn($this->makeHeaders());
+		$imap->method('readMessage')->willReturn([
 			'uid' => 42,
 			'from' => 'sender@example.com',
 			'to' => 'default@test.com',
@@ -125,10 +140,15 @@ final class SendToolTest extends TestCase
 			'body' => 'Original body',
 			'has_attachments' => false,
 		]);
-		$this->smtp->expects(self::once())->method('send');
-		$this->imap->expects(self::once())->method('setFlag')->with(42, 'Answered', 'INBOX');
 
-		$result = $this->tool->replyEmail(uid: 42, body: 'My reply');
+		$smtp = $this->createMock(SmtpConnectionInterface::class);
+		$smtp->expects(self::once())->method('send');
+
+		$imap->expects(self::once())->method('setFlag')->with(42, 'Answered', 'INBOX');
+
+		$tool = $this->buildTool($imap, $smtp);
+
+		$result = $tool->replyEmail(uid: 42, body: 'My reply');
 
 		self::assertTrue($result['success'] ?? false);
 		self::assertStringContainsString('Reply sent', $result['message']);
@@ -151,9 +171,13 @@ final class SendToolTest extends TestCase
 			'body' => 'Original body',
 			'has_attachments' => false,
 		]);
-		$this->smtp->expects(self::once())->method('send');
 
-		$result = $this->tool->replyEmail(uid: 42, body: 'Reply all', reply_all: true);
+		$smtp = $this->createMock(SmtpConnectionInterface::class);
+		$smtp->expects(self::once())->method('send');
+
+		$tool = $this->buildTool(smtp: $smtp);
+
+		$result = $tool->replyEmail(uid: 42, body: 'Reply all', reply_all: true);
 
 		self::assertTrue($result['success'] ?? false);
 		self::assertStringContainsString('Reply-all sent', $result['message']);
@@ -186,9 +210,13 @@ final class SendToolTest extends TestCase
 			'has_attachments' => false,
 		]);
 		$this->imap->method('fetchAttachments')->willReturn([]);
-		$this->smtp->expects(self::once())->method('send');
 
-		$result = $this->tool->forwardEmail(uid: 42, to: ['forward@example.com']);
+		$smtp = $this->createMock(SmtpConnectionInterface::class);
+		$smtp->expects(self::once())->method('send');
+
+		$tool = $this->buildTool(smtp: $smtp);
+
+		$result = $tool->forwardEmail(uid: 42, to: ['forward@example.com']);
 
 		self::assertTrue($result['success'] ?? false);
 		self::assertStringContainsString('forward@example.com', $result['message']);
@@ -265,5 +293,19 @@ final class SendToolTest extends TestCase
 			'flagged' => false,
 			'answered' => false,
 		];
+	}
+
+	private function buildTool(
+		ImapConnectionInterface|null $imap = null,
+		SmtpConnectionInterface|null $smtp = null,
+	): SendTool {
+		$imapFactory = $this->createStub(ImapConnectionFactory::class);
+		$imapFactory->method('create')->willReturn($imap ?? $this->imap);
+
+		$smtpFactory = $this->createStub(SmtpConnectionFactory::class);
+		$smtpFactory->method('getConfig')->willReturn($this->config);
+		$smtpFactory->method('create')->willReturn($smtp ?? $this->smtp);
+
+		return new SendTool($smtpFactory, $imapFactory);
 	}
 }
