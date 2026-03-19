@@ -11,6 +11,7 @@ use App\Smtp\SmtpConnectionFactory;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\ToolAnnotations;
+use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 
 class DraftTool
@@ -38,6 +39,10 @@ class DraftTool
 		string|null $subject = null,
 		#[Schema(description: 'Plain text body')]
 		string|null $body = null,
+		#[Schema(description: 'Sender address (optional — uses default)')]
+		string|null $from = null,
+		#[Schema(description: 'Sender display name (optional — falls back to SMTP_FROM_NAME)')]
+		string|null $from_name = null,
 		#[Schema(description: 'CC recipients', items: ['type' => 'string'])]
 		array|null $cc = null,
 		#[Schema(description: 'BCC recipients', items: ['type' => 'string'])]
@@ -48,8 +53,9 @@ class DraftTool
 		string $draft_folder = 'Drafts',
 	): array {
 		$config = $this->smtpFactory->getConfig();
+		$sender = $config->resolveFrom($from, $from_name);
 
-		$email = (new Email())->from($config->from);
+		$email = (new Email())->from($sender);
 
 		if ($to !== null) {
 			foreach ($to as $addr) {

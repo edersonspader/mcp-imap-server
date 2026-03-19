@@ -8,6 +8,7 @@ use App\Smtp\SmtpConfig;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Mime\Address;
 
 #[CoversClass(SmtpConfig::class)]
 final class SmtpConfigTest extends TestCase
@@ -21,6 +22,7 @@ final class SmtpConfigTest extends TestCase
 			user: 'user@example.com',
 			password: 'secret',
 			from: 'sender@example.com',
+			fromName: 'Sender Name',
 			encryption: 'ssl',
 			allowedFrom: ['alias@example.com'],
 		);
@@ -30,6 +32,7 @@ final class SmtpConfigTest extends TestCase
 		self::assertSame('user@example.com', $config->user);
 		self::assertSame('secret', $config->password);
 		self::assertSame('sender@example.com', $config->from);
+		self::assertSame('Sender Name', $config->fromName);
 		self::assertSame('ssl', $config->encryption);
 	}
 
@@ -45,6 +48,7 @@ final class SmtpConfigTest extends TestCase
 		);
 
 		self::assertSame('tls', $config->encryption);
+		self::assertSame('', $config->fromName);
 	}
 
 	#[Test]
@@ -103,6 +107,7 @@ final class SmtpConfigTest extends TestCase
 		$_ENV['SMTP_USER'] = 'test@test.com';
 		$_ENV['SMTP_PASSWORD'] = 'pass123';
 		$_ENV['SMTP_FROM'] = 'from@test.com';
+		$_ENV['SMTP_FROM_NAME'] = 'Test Sender';
 		$_ENV['SMTP_ENCRYPTION'] = 'ssl';
 		$_ENV['SMTP_ALLOWED_FROM'] = 'alias1@test.com, alias2@test.com';
 
@@ -114,6 +119,7 @@ final class SmtpConfigTest extends TestCase
 			self::assertSame('test@test.com', $config->user);
 			self::assertSame('pass123', $config->password);
 			self::assertSame('from@test.com', $config->from);
+			self::assertSame('Test Sender', $config->fromName);
 			self::assertSame('ssl', $config->encryption);
 			self::assertContains('alias1@test.com', $config->allowedFrom);
 			self::assertContains('alias2@test.com', $config->allowedFrom);
@@ -125,6 +131,7 @@ final class SmtpConfigTest extends TestCase
 				$_ENV['SMTP_USER'],
 				$_ENV['SMTP_PASSWORD'],
 				$_ENV['SMTP_FROM'],
+				$_ENV['SMTP_FROM_NAME'],
 				$_ENV['SMTP_ENCRYPTION'],
 				$_ENV['SMTP_ALLOWED_FROM'],
 			);
@@ -184,7 +191,8 @@ final class SmtpConfigTest extends TestCase
 
 		$result = $config->resolveFrom('alias@example.com');
 
-		self::assertSame('alias@example.com', $result);
+		self::assertInstanceOf(Address::class, $result);
+		self::assertSame('alias@example.com', $result->getAddress());
 	}
 
 	#[Test]
@@ -199,9 +207,9 @@ final class SmtpConfigTest extends TestCase
 			allowedFrom: ['alias@example.com'],
 		);
 
-		$result = $config->resolveFrom(null, 'alias@example.com');
+		$result = $config->resolveFrom(null, originalTo: 'alias@example.com');
 
-		self::assertSame('alias@example.com', $result);
+		self::assertSame('alias@example.com', $result->getAddress());
 	}
 
 	#[Test]
@@ -217,7 +225,7 @@ final class SmtpConfigTest extends TestCase
 
 		$result = $config->resolveFrom('unknown@other.com');
 
-		self::assertSame('default@example.com', $result);
+		self::assertSame('default@example.com', $result->getAddress());
 	}
 
 	#[Test]
@@ -231,9 +239,9 @@ final class SmtpConfigTest extends TestCase
 			from: 'default@example.com',
 		);
 
-		$result = $config->resolveFrom(null, null);
+		$result = $config->resolveFrom(null, originalTo: null);
 
-		self::assertSame('default@example.com', $result);
+		self::assertSame('default@example.com', $result->getAddress());
 	}
 
 	#[Test]
@@ -250,7 +258,7 @@ final class SmtpConfigTest extends TestCase
 
 		$result = $config->resolveFrom('alias@example.com');
 
-		self::assertSame('alias@example.com', $result);
+		self::assertSame('alias@example.com', $result->getAddress());
 	}
 
 	#[Test]
@@ -316,8 +324,85 @@ final class SmtpConfigTest extends TestCase
 			allowedFrom: ['alias@example.com', 'other@example.com'],
 		);
 
-		$result = $config->resolveFrom('alias@example.com', 'other@example.com');
+		$result = $config->resolveFrom('alias@example.com', originalTo: 'other@example.com');
 
-		self::assertSame('alias@example.com', $result);
+		self::assertSame('alias@example.com', $result->getAddress());
+	}
+
+	#[Test]
+	public function it_resolves_from_with_requested_name(): void
+	{
+		$config = new SmtpConfig(
+			host: 'smtp.example.com',
+			port: 587,
+			user: 'user@example.com',
+			password: 'secret',
+			from: 'default@example.com',
+			fromName: 'Default Name',
+		);
+
+		$result = $config->resolveFrom(null, 'Custom Name');
+
+		self::assertSame('default@example.com', $result->getAddress());
+		self::assertSame('Custom Name', $result->getName());
+	}
+
+	#[Test]
+	public function it_resolves_from_with_default_name(): void
+	{
+		$config = new SmtpConfig(
+			host: 'smtp.example.com',
+			port: 587,
+			user: 'user@example.com',
+			password: 'secret',
+			from: 'default@example.com',
+			fromName: 'Default Name',
+		);
+
+		$result = $config->resolveFrom(null);
+
+		self::assertSame('default@example.com', $result->getAddress());
+		self::assertSame('Default Name', $result->getName());
+	}
+
+	#[Test]
+	public function it_resolves_from_with_empty_name_by_default(): void
+	{
+		$config = new SmtpConfig(
+			host: 'smtp.example.com',
+			port: 587,
+			user: 'user@example.com',
+			password: 'secret',
+			from: 'default@example.com',
+		);
+
+		$result = $config->resolveFrom(null);
+
+		self::assertSame('default@example.com', $result->getAddress());
+		self::assertSame('', $result->getName());
+	}
+
+	#[Test]
+	public function it_reads_from_name_from_env(): void
+	{
+		$_ENV['SMTP_HOST'] = 'smtp.test.com';
+		$_ENV['SMTP_USER'] = 'test@test.com';
+		$_ENV['SMTP_PASSWORD'] = 'pass123';
+		$_ENV['SMTP_FROM'] = 'from@test.com';
+		$_ENV['SMTP_FROM_NAME'] = 'My Sender';
+
+		try {
+			$config = SmtpConfig::fromEnv();
+
+			self::assertSame('My Sender', $config->fromName);
+		} finally {
+			unset(
+				$_ENV['SMTP_HOST'],
+				$_ENV['SMTP_USER'],
+				$_ENV['SMTP_PASSWORD'],
+				$_ENV['SMTP_FROM'],
+				$_ENV['SMTP_FROM_NAME'],
+			);
+		}
 	}
 }

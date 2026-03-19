@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Smtp;
 
+use Symfony\Component\Mime\Address;
+
 readonly class SmtpConfig
 {
 	/** @var list<string> */
@@ -18,6 +20,7 @@ readonly class SmtpConfig
 		public string $user,
 		public string $password,
 		public string $from,
+		public string $fromName = '',
 		public string $encryption = 'tls',
 		array $allowedFrom = [],
 	) {
@@ -54,6 +57,7 @@ readonly class SmtpConfig
 			user: $user,
 			password: $password,
 			from: $from,
+			fromName: self::envString('SMTP_FROM_NAME'),
 			encryption: self::envString('SMTP_ENCRYPTION', 'tls'),
 			allowedFrom: $allowedFrom,
 		);
@@ -65,17 +69,20 @@ readonly class SmtpConfig
 	 * 2. Original To address from the received email (if in allowed list — reply/forward identity match)
 	 * 3. Default from
 	 */
-	public function resolveFrom(string|null $requestedFrom, string|null $originalTo = null): string
-	{
+	public function resolveFrom(
+		string|null $requestedFrom,
+		string|null $requestedName = null,
+		string|null $originalTo = null,
+	): Address {
 		if ($requestedFrom !== null && $this->isAllowed($requestedFrom)) {
-			return $requestedFrom;
+			return new Address($requestedFrom, $requestedName ?? $this->fromName);
 		}
 
 		if ($originalTo !== null && $this->isAllowed($originalTo)) {
-			return $originalTo;
+			return new Address($originalTo, $requestedName ?? $this->fromName);
 		}
 
-		return $this->from;
+		return new Address($this->from, $requestedName ?? $this->fromName);
 	}
 
 	public function isAllowed(string $address): bool

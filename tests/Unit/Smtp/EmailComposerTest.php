@@ -25,6 +25,7 @@ final class EmailComposerTest extends TestCase
 			user: 'user@test.com',
 			password: 'secret',
 			from: 'default@test.com',
+			fromName: 'Default Sender',
 			allowedFrom: ['alias@test.com'],
 		);
 
@@ -44,6 +45,48 @@ final class EmailComposerTest extends TestCase
 		self::assertSame('recipient@example.com', $email->getTo()[0]->getAddress());
 		self::assertSame('Hello', $email->getSubject());
 		self::assertSame('World', $email->getTextBody());
+	}
+
+	#[Test]
+	public function it_composes_email_with_sender_name(): void
+	{
+		$email = $this->composer->compose(
+			to: ['recipient@example.com'],
+			subject: 'Hello',
+			body: 'World',
+			fromName: 'John Doe',
+		);
+
+		self::assertSame('default@test.com', $email->getFrom()[0]->getAddress());
+		self::assertSame('John Doe', $email->getFrom()[0]->getName());
+	}
+
+	#[Test]
+	public function it_composes_email_with_from_and_name(): void
+	{
+		$email = $this->composer->compose(
+			to: ['recipient@example.com'],
+			subject: 'Hello',
+			body: 'World',
+			from: 'alias@test.com',
+			fromName: 'Alias User',
+		);
+
+		self::assertSame('alias@test.com', $email->getFrom()[0]->getAddress());
+		self::assertSame('Alias User', $email->getFrom()[0]->getName());
+	}
+
+	#[Test]
+	public function it_falls_back_to_default_sender_name(): void
+	{
+		$email = $this->composer->compose(
+			to: ['recipient@example.com'],
+			subject: 'Hello',
+			body: 'World',
+		);
+
+		self::assertSame('default@test.com', $email->getFrom()[0]->getAddress());
+		self::assertSame('Default Sender', $email->getFrom()[0]->getName());
 	}
 
 	#[Test]
@@ -212,6 +255,22 @@ final class EmailComposerTest extends TestCase
 	}
 
 	#[Test]
+	public function it_composes_reply_with_sender_name(): void
+	{
+		$headers = $this->makeHeaders();
+
+		$email = $this->composer->composeReply(
+			originalHeaders: $headers,
+			originalBody: 'Body',
+			body: 'Reply',
+			fromName: 'Reply User',
+		);
+
+		self::assertSame('default@test.com', $email->getFrom()[0]->getAddress());
+		self::assertSame('Reply User', $email->getFrom()[0]->getName());
+	}
+
+	#[Test]
 	public function it_composes_reply_with_html(): void
 	{
 		$headers = $this->makeHeaders();
@@ -303,6 +362,23 @@ final class EmailComposerTest extends TestCase
 
 		self::assertStringContainsString('<p>FYI</p>', $html);
 		self::assertStringContainsString('Forwarded message', $html);
+	}
+
+	#[Test]
+	public function it_composes_forward_with_sender_name(): void
+	{
+		$headers = $this->makeForwardHeaders();
+
+		$email = $this->composer->composeForward(
+			originalHeaders: $headers,
+			originalBody: 'Original body',
+			originalAttachments: [],
+			to: ['forward@example.com'],
+			fromName: 'Forward User',
+		);
+
+		self::assertSame('default@test.com', $email->getFrom()[0]->getAddress());
+		self::assertSame('Forward User', $email->getFrom()[0]->getName());
 	}
 
 	#[Test]

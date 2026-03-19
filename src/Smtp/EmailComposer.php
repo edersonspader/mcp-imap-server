@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Smtp;
 
+use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 
 class EmailComposer
@@ -25,13 +26,14 @@ class EmailComposer
 		string $subject,
 		string $body,
 		string|null $from = null,
+		string|null $fromName = null,
 		array|null $cc = null,
 		array|null $bcc = null,
 		string|null $replyTo = null,
 		string|null $bodyHtml = null,
 		array|null $attachments = null,
 	): Email {
-		$resolvedFrom = $this->config->resolveFrom($from);
+		$resolvedFrom = $this->config->resolveFrom($from, $fromName);
 
 		$this->validateAddresses($to);
 
@@ -93,11 +95,12 @@ class EmailComposer
 		string $body,
 		bool $replyAll = false,
 		string|null $from = null,
+		string|null $fromName = null,
 		string|null $bodyHtml = null,
 		array|null $attachments = null,
 	): Email {
 		$originalTo = $originalHeaders['to'];
-		$resolvedFrom = $this->config->resolveFrom($from, $originalTo);
+		$resolvedFrom = $this->config->resolveFrom($from, $fromName, $originalTo);
 
 		$replyToAddr = $originalHeaders['reply_to'] !== ''
 			? $originalHeaders['reply_to']
@@ -137,22 +140,22 @@ class EmailComposer
 		}
 
 		if ($replyAll) {
-			$this->addReplyAllRecipients($email, $originalHeaders, $resolvedFrom);
+			$this->addReplyAllRecipients($email, $originalHeaders, $resolvedFrom->getAddress());
 		}
 
 		/** @var list<string> $allTo */
 		$allTo = array_map(
-			static fn(\Symfony\Component\Mime\Address $a): string => $a->getAddress(),
+			static fn(Address $a): string => $a->getAddress(),
 			array_merge($email->getTo(), $email->getCc()),
 		);
 		$this->validateAddresses($allTo);
 
 		/** @var list<string> $toAddrs */
-		$toAddrs = array_map(static fn(\Symfony\Component\Mime\Address $a): string => $a->getAddress(), $email->getTo());
+		$toAddrs = array_map(static fn(Address $a): string => $a->getAddress(), $email->getTo());
 		/** @var list<string> $ccAddrs */
-		$ccAddrs = array_map(static fn(\Symfony\Component\Mime\Address $a): string => $a->getAddress(), $email->getCc());
+		$ccAddrs = array_map(static fn(Address $a): string => $a->getAddress(), $email->getCc());
 		/** @var list<string> $bccAddrs */
-		$bccAddrs = array_map(static fn(\Symfony\Component\Mime\Address $a): string => $a->getAddress(), $email->getBcc());
+		$bccAddrs = array_map(static fn(Address $a): string => $a->getAddress(), $email->getBcc());
 		$this->enforceRecipientLimit($toAddrs, $ccAddrs, $bccAddrs);
 
 		$this->addAttachments($email, $attachments);
@@ -173,11 +176,12 @@ class EmailComposer
 		array $to,
 		string|null $body = null,
 		string|null $from = null,
+		string|null $fromName = null,
 		string|null $bodyHtml = null,
 		array|null $attachments = null,
 	): Email {
 		$originalTo = $originalHeaders['to'];
-		$resolvedFrom = $this->config->resolveFrom($from, $originalTo);
+		$resolvedFrom = $this->config->resolveFrom($from, $fromName, $originalTo);
 
 		$this->validateAddresses($to);
 		$this->enforceRecipientLimit($to, [], []);

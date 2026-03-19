@@ -48,6 +48,8 @@ class SendTool
 		string $body,
 		#[Schema(description: 'Sender address (optional — resolved from allowed list or default)')]
 		string|null $from = null,
+		#[Schema(description: 'Sender display name (optional — falls back to SMTP_FROM_NAME)')]
+		string|null $from_name = null,
 		#[Schema(description: 'CC recipients', items: ['type' => 'string'])]
 		array|null $cc = null,
 		#[Schema(description: 'BCC recipients', items: ['type' => 'string'])]
@@ -67,6 +69,7 @@ class SendTool
 				subject: $subject,
 				body: $body,
 				from: $from,
+				fromName: $from_name,
 				cc: $cc,
 				bcc: $bcc,
 				replyTo: $reply_to,
@@ -117,6 +120,8 @@ class SendTool
 		bool $reply_all = false,
 		#[Schema(description: 'Sender address (optional — auto-detected from original To if in allowed list)')]
 		string|null $from = null,
+		#[Schema(description: 'Sender display name (optional — falls back to SMTP_FROM_NAME)')]
+		string|null $from_name = null,
 		#[Schema(description: 'HTML reply body (optional)')]
 		string|null $body_html = null,
 		#[Schema(description: 'File paths to attach', items: ['type' => 'string'])]
@@ -145,6 +150,7 @@ class SendTool
 				body: $body,
 				replyAll: $reply_all,
 				from: $from,
+				fromName: $from_name,
 				bodyHtml: $body_html,
 				attachments: $attachments,
 			);
@@ -195,6 +201,8 @@ class SendTool
 		string|null $body = null,
 		#[Schema(description: 'Sender address (optional — auto-detected from original To if in allowed list)')]
 		string|null $from = null,
+		#[Schema(description: 'Sender display name (optional — falls back to SMTP_FROM_NAME)')]
+		string|null $from_name = null,
 		#[Schema(description: 'HTML body to prepend (optional)')]
 		string|null $body_html = null,
 		#[Schema(description: 'Additional file paths to attach', items: ['type' => 'string'])]
@@ -226,6 +234,7 @@ class SendTool
 				to: $to,
 				body: $body,
 				from: $from,
+				fromName: $from_name,
 				bodyHtml: $body_html,
 				attachments: $attachments,
 			);
