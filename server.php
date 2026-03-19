@@ -9,6 +9,8 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 use App\Imap\ImapConfig;
 use App\Imap\ImapConnectionFactory;
+use App\Smtp\SmtpConfig;
+use App\Smtp\SmtpConnectionFactory;
 use Dotenv\Dotenv;
 use Mcp\Capability\Registry\Container;
 use Mcp\Server;
@@ -31,6 +33,7 @@ $imapCache = new Psr16Cache(new FilesystemAdapter('imap-data', 0, __DIR__ . '/va
 
 $container = new Container();
 $container->set(ImapConnectionFactory::class, new ImapConnectionFactory(ImapConfig::fromEnv(), $imapCache));
+$container->set(SmtpConnectionFactory::class, new SmtpConnectionFactory(SmtpConfig::fromEnv()));
 $container->set(CacheInterface::class, $imapCache);
 
 $server = Server::builder()

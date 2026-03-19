@@ -29,7 +29,13 @@ Edit `.env` with your IMAP server details:
 | `IMAP_PASSWORD` | IMAP password | — |
 | `IMAP_ENCRYPTION` | Encryption type (`ssl`, `tls`, or empty) | `ssl` |
 | `IMAP_VALIDATE_CERT` | Validate SSL certificate | `true` |
-| `ATTACHMENT_PATH` | Directory to save attachments | `var/attachments` |
+| `SMTP_HOST` | SMTP server hostname | — |
+| `SMTP_PORT` | SMTP server port | `587` |
+| `SMTP_USER` | SMTP username/email | — |
+| `SMTP_PASSWORD` | SMTP password | — |
+| `SMTP_FROM` | Default sender address | — |
+| `SMTP_ENCRYPTION` | Encryption type (`tls`, `ssl`, or empty) | `tls` |
+| `SMTP_ALLOWED_FROM` | Comma-separated list of allowed sender aliases | value of `SMTP_FROM` |
 | `MCP_AUTH_TOKEN` | Bearer token for HTTP transport authentication (empty = disabled) | — |
 
 ## Usage
@@ -311,6 +317,10 @@ Add to `.vscode/mcp.json`:
 | **delete_message** | Delete a message |
 | **flag_message** | Set/clear message flags (Seen, Flagged, Answered, Draft) |
 | **get_attachments** | Save message attachments to disk |
+| **send_email** | Compose and send a new email |
+| **reply_email** | Reply to an existing email with proper threading |
+| **forward_email** | Forward an email with its attachments to new recipients |
+| **save_draft** | Save an email draft to the Drafts folder |
 
 ## Resources
 

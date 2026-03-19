@@ -505,6 +505,25 @@ class ImapConnection implements ImapConnectionInterface
     }
 
     /**
+     * @param list<string> $flags
+     *
+     * @throws MailboxNotFoundException
+     */
+    public function appendMessage(string $rawMessage, string $mailbox, array $flags = []): void
+    {
+        $folder = $this->getFolder($mailbox);
+
+        try {
+            $folder->appendMessage($rawMessage, ['flags' => $flags]);
+        } catch (\Exception $e) {
+            throw new ImapConnectionException(
+                "IMAP error appending message to '{$mailbox}': {$e->getMessage()}",
+                previous: $e,
+            );
+        }
+    }
+
+    /**
      * @throws MailboxNotFoundException
      * @throws ImapConnectionException
      */

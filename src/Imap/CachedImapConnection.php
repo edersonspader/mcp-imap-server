@@ -302,6 +302,15 @@ class CachedImapConnection implements ImapConnectionInterface
 		return $this->inner->fetchAttachments($uid, $mailbox, $savePath);
 	}
 
+	/**
+	 * @param list<string> $flags
+	 */
+	public function appendMessage(string $rawMessage, string $mailbox, array $flags = []): void
+	{
+		$this->inner->appendMessage($rawMessage, $mailbox, $flags);
+		$this->invalidateMailbox($mailbox);
+	}
+
 	private function getMailboxVersion(string $mailbox): string
 	{
 		$versionKey = 'ver.' . $this->mailboxHash($mailbox);

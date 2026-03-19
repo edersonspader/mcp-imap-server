@@ -137,4 +137,13 @@ interface ImapConnectionInterface
 	 * @throws MessageNotFoundException
 	 */
 	public function fetchAttachments(int $uid, string $mailbox = 'INBOX', string $savePath = 'var/attachments'): array;
+
+	/**
+	 * Append a raw RFC 2822 message to a mailbox (used for saving to Sent/Drafts).
+	 *
+	 * @param list<string> $flags IMAP flags (e.g. ['\Seen', '\Draft'])
+	 *
+	 * @throws MailboxNotFoundException
+	 */
+	public function appendMessage(string $rawMessage, string $mailbox, array $flags = []): void;
 }

@@ -29,7 +29,13 @@ Edite o `.env` com os dados do seu servidor IMAP:
 | `IMAP_PASSWORD` | Senha IMAP | — |
 | `IMAP_ENCRYPTION` | Tipo de criptografia (`ssl`, `tls`, ou vazio) | `ssl` |
 | `IMAP_VALIDATE_CERT` | Validar certificado SSL | `true` |
-| `ATTACHMENT_PATH` | Diretório para salvar anexos | `var/attachments` |
+| `SMTP_HOST` | Hostname do servidor SMTP | — |
+| `SMTP_PORT` | Porta do servidor SMTP | `587` |
+| `SMTP_USER` | Usuário/e-mail SMTP | — |
+| `SMTP_PASSWORD` | Senha SMTP | — |
+| `SMTP_FROM` | Endereço de remetente padrão | — |
+| `SMTP_ENCRYPTION` | Tipo de criptografia (`tls`, `ssl`, ou vazio) | `tls` |
+| `SMTP_ALLOWED_FROM` | Lista de aliases de remetente permitidos (separados por vírgula) | valor de `SMTP_FROM` |
 | `MCP_AUTH_TOKEN` | Token Bearer para autenticação no transporte HTTP (vazio = desabilitado) | — |
 
 ## Uso
@@ -311,6 +317,10 @@ Adicione ao `.vscode/mcp.json`:
 | **delete_message** | Excluir uma mensagem |
 | **flag_message** | Definir/limpar flags de mensagem (Seen, Flagged, Answered, Draft) |
 | **get_attachments** | Salvar anexos da mensagem em disco |
+| **send_email** | Compor e enviar um novo e-mail |
+| **reply_email** | Responder a um e-mail existente com threading correto |
+| **forward_email** | Encaminhar um e-mail com seus anexos para novos destinatários |
+| **save_draft** | Salvar um rascunho de e-mail na pasta Drafts |
 
 ## Resources
 
