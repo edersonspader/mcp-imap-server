@@ -30,7 +30,7 @@ class MessageTool
 		int $limit = 20,
 		#[Schema(description: 'Number of messages to skip')]
 		int $offset = 0,
-		#[Schema(description: 'Fields to return (uid is always included). Available: from, to, subject, date, seen. Omit for all fields.')]
+		#[Schema(description: 'Fields to return (uid is always included). Available: from, to, subject, date, seen. Omit for all fields.', items: ['type' => 'string'])]
 		array|null $fields = null,
 	): array {
 		$connection = null;
@@ -69,11 +69,11 @@ class MessageTool
 		string|null $before = null,
 		#[Schema(description: 'Search in message body')]
 		string|null $body = null,
-		#[Schema(description: 'IMAP flags to filter by. Available: SEEN, UNSEEN, FLAGGED, UNFLAGGED, ANSWERED, UNANSWERED, DELETED, UNDELETED, RECENT, OLD, NEW')]
+		#[Schema(description: 'IMAP flags to filter by. Available: SEEN, UNSEEN, FLAGGED, UNFLAGGED, ANSWERED, UNANSWERED, DELETED, UNDELETED, RECENT, OLD, NEW', items: ['type' => 'string'])]
 		array|null $flags = null,
 		int $limit = 20,
 		int $offset = 0,
-		#[Schema(description: 'Fields to return (uid is always included). Available: from, to, subject, date, seen. Omit for all fields.')]
+		#[Schema(description: 'Fields to return (uid is always included). Available: from, to, subject, date, seen. Omit for all fields.', items: ['type' => 'string'])]
 		array|null $fields = null,
 	): array {
 		$connection = null;

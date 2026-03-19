@@ -51,7 +51,7 @@ class MessageActionTool
 	 */
 	#[McpTool(name: 'batch_move_messages', description: 'Move multiple messages from one mailbox to another in a single batch operation. Removes from source. Max 50 UIDs per call. REQUIRES USER CONFIRMATION.', annotations: new ToolAnnotations(destructiveHint: true))]
 	public function batchMoveMessages(
-		#[Schema(description: 'List of message UIDs to move')]
+		#[Schema(description: 'List of message UIDs to move', items: ['type' => 'integer'])]
 		array $uids,
 		#[Schema(description: 'Source mailbox')]
 		string $from_mailbox,
@@ -163,7 +163,7 @@ class MessageActionTool
 	 */
 	#[McpTool(name: 'batch_delete_messages', description: 'Delete multiple messages permanently in a single IMAP command. This action is irreversible. Max 50 UIDs per call. REQUIRES USER CONFIRMATION.', annotations: new ToolAnnotations(destructiveHint: true, title: 'Batch Delete Messages (destructive)'))]
 	public function batchDeleteMessages(
-		#[Schema(description: 'List of message UIDs to delete')]
+		#[Schema(description: 'List of message UIDs to delete', items: ['type' => 'integer'])]
 		array $uids,
 		string $mailbox = 'INBOX',
 	): array {
@@ -237,7 +237,7 @@ class MessageActionTool
 	 */
 	#[McpTool(name: 'batch_flag_messages', description: 'Set or clear a flag on multiple messages in a single IMAP command. Max 50 UIDs per call.', annotations: new ToolAnnotations(destructiveHint: false, idempotentHint: true))]
 	public function batchFlagMessages(
-		#[Schema(description: 'List of message UIDs')]
+		#[Schema(description: 'List of message UIDs', items: ['type' => 'integer'])]
 		array $uids,
 		#[Schema(description: 'Flag name', pattern: '^(Seen|Flagged|Answered|Draft)$')]
 		string $flag,
